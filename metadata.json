@@ -1,0 +1,6 @@
+{
+  "name": "Zebra ZC300 ID Card Studio",
+  "description": "Double-sided ID card designer and printing studio optimized for Zebra ZC300 card printers with exact Interclubes typography, photo upload, and CR80 print preview.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
