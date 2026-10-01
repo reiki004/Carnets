@@ -246,12 +246,12 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
   return (
     <div className="space-y-6">
       {/* ================= SECCIÓN 1: GESTIÓN DE CLUBES (DENTRO DE CONFIG) ================= */}
-      <div className="group m-0 p-0 border-b border-slate-300 pb-5" id="gestion-clubes">
+      <div className="group m-0 p-0 border-b border-[#dcdcd8] pb-5" id="gestion-clubes">
         <span className="side-tag jug flex items-center gap-1 w-max">
           <Shield className="w-3.5 h-3.5" /> Gestión de clubes
         </span>
 
-        <label className="text-xs font-bold text-slate-700 mt-2">Club a editar</label>
+        <label className="text-xs font-bold text-[#1a1a1a] mt-2">Club a editar</label>
         <select
           value={selectedClubId}
           onChange={(e) => handleSelectClub(e.target.value)}
@@ -264,7 +264,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           ))}
         </select>
 
-        <label className="text-xs font-bold text-slate-700 mt-2">Nombre del club</label>
+        <label className="text-xs font-bold text-[#1a1a1a] mt-2">Nombre del club</label>
         <input
           type="text"
           value={clubNombre}
@@ -272,7 +272,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           placeholder="NOMBRE DEL CLUB"
         />
 
-        <label className="text-xs font-bold text-slate-700 mt-2">Logo del club</label>
+        <label className="text-xs font-bold text-[#1a1a1a] mt-2">Logo del club</label>
         <div className="file-row">
           <button
             type="button"
@@ -291,10 +291,10 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           className="hidden"
         />
 
-        <label className="text-xs font-bold text-slate-700 mt-3 block">
+        <label className="text-xs font-bold text-[#1a1a1a] mt-3 block">
           Categorías de este club
         </label>
-        <div className="hint mb-1">
+        <div className="hint mb-1 text-[#555552]">
           Marca las categorías que aplican a este club (puedes seleccionar una o varias):
         </div>
         <div className="club-cat-list">
@@ -315,13 +315,13 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
         </div>
 
         <div className="file-row mt-4">
-          <button onClick={handleSaveClub} className="file-btn text-xs font-bold">
+          <button onClick={handleSaveClub} className="file-btn text-xs font-bold bg-[#e11d2e] hover:bg-[#c81926] text-white border-none">
             ＋ Guardar club
           </button>
           {selectedClubId && (
             <button
               onClick={handleDeleteClub}
-              className="file-btn alt text-xs text-red-600 hover:text-red-700"
+              className="file-btn alt text-xs text-[#e11d2e] hover:text-[#c81926]"
             >
               <Trash2 className="w-3.5 h-3.5 inline mr-1" /> Eliminar club
             </button>
@@ -336,7 +336,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       </div>
 
       {/* ================= SECCIÓN 2: CATEGORÍAS ================= */}
-      <div className="group m-0 p-0 border-b border-slate-300 pb-5">
+      <div className="group m-0 p-0 border-b border-[#dcdcd8] pb-5">
         <span className="side-tag db flex items-center gap-1 w-max">
           <Layers className="w-3.5 h-3.5" /> Categorías del torneo
         </span>
@@ -370,11 +370,11 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       </div>
 
       {/* ================= SECCIÓN 3: ESTADOS DE JUGADOR & DISEÑO DE PIE ================= */}
-      <div className="group m-0 p-0 border-b border-slate-300 pb-5">
+      <div className="group m-0 p-0 border-b border-[#dcdcd8] pb-5">
         <span className="side-tag back flex items-center gap-1 w-max">
           <Palette className="w-3.5 h-3.5" /> Estados de jugador · Diseño de pie
         </span>
-        <div className="hint mt-1 mb-2">
+        <div className="hint mt-1 mb-2 text-[#555552]">
           Asigna una imagen de pie inferior diferente para cada estado de jugador. Se aplicará automáticamente al imprimir.
         </div>
         <div className="space-y-2">
@@ -398,7 +398,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       </div>
 
       {/* ================= SECCIÓN 4: CARGOS DE ADMINISTRATIVO & DISEÑO DE PIE ================= */}
-      <div className="group m-0 p-0 border-b border-slate-300 pb-5">
+      <div className="group m-0 p-0 border-b border-[#dcdcd8] pb-5">
         <span className="side-tag front flex items-center gap-1 w-max">
           <Briefcase className="w-3.5 h-3.5" /> Cargos de administrativo · Diseño de pie
         </span>
@@ -415,7 +415,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
             <Plus className="w-3.5 h-3.5" /> Agregar cargo
           </button>
         </div>
-        <div className="hint mt-1 mb-2">
+        <div className="hint mt-1 mb-2 text-[#555552]">
           Asigna una imagen de pie inferior para cada cargo administrativo.
         </div>
         <div className="space-y-2">
@@ -448,26 +448,26 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       />
 
       {/* ================= SECCIÓN 5: INFORMACIÓN DE CONEXIÓN SUPABASE ================= */}
-      <div className="bg-slate-100 p-3.5 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1.5">
-        <div className="flex items-center gap-2 font-bold text-slate-900">
-          <Database className="w-4 h-4 text-emerald-600" />
+      <div className="bg-white p-3.5 rounded-xl border border-[#dcdcd8] text-xs text-[#1a1a1a] space-y-1.5 shadow-xs">
+        <div className="flex items-center gap-2 font-bold text-[#1a1a1a]">
+          <Database className="w-4 h-4 text-[#e11d2e]" />
           <span>Base de Datos Supabase Conectada</span>
         </div>
-        <p className="text-[11px] text-slate-600 font-mono break-all">
+        <p className="text-[11px] text-[#555552] font-mono break-all">
           Proyecto activo: {SUPABASE_URL}
         </p>
-        <div className="flex items-center gap-1.5 text-emerald-700 font-semibold text-[11px]">
-          <CheckCircle className="w-3.5 h-3.5" /> Conexión verificada con clave pública anónima
+        <div className="flex items-center gap-1.5 text-[#1a1a1a] font-semibold text-[11px]">
+          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Conexión verificada con clave pública anónima
         </div>
       </div>
 
       {/* ================= SECCIÓN 6: EDICIÓN MANUAL AVANZADA DEL CARNET ================= */}
       <details className="mini-panel">
-        <summary className="font-bold text-slate-800">
+        <summary className="font-bold text-[#1a1a1a]">
           Edición manual avanzada del carnet (pruebas libres)
         </summary>
         <div className="mini-body space-y-3 pt-2">
-          <div className="hint">
+          <div className="hint text-[#555552]">
             Permite editar cualquier campo del carnet visual directamente para pruebas puntuales sin alterar la base de datos.
           </div>
 
@@ -493,7 +493,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700">Apellidos</label>
+            <label className="text-xs font-bold text-[#1a1a1a]">Apellidos</label>
             <input
               type="text"
               value={cardState.apellidos}
@@ -505,7 +505,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700">Nombres</label>
+            <label className="text-xs font-bold text-[#1a1a1a]">Nombres</label>
             <input
               type="text"
               value={cardState.nombres}
@@ -517,7 +517,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700">
+            <label className="text-xs font-bold text-[#1a1a1a]">
               {cardState.tipo === 'admin' ? 'Cargo' : 'Nombre del club'}
             </label>
             <input
@@ -532,7 +532,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-semibold text-slate-700">Fecha nacimiento</label>
+              <label className="text-xs font-bold text-[#1a1a1a]">Fecha nacimiento</label>
               <DateInput
                 value={cardState.fnac}
                 onChange={(val) => setCardState((prev) => ({ ...prev, fnac: val }))}
@@ -540,7 +540,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700">Número de documento</label>
+              <label className="text-xs font-bold text-[#1a1a1a]">Número de documento</label>
               <input
                 type="text"
                 value={cardState.dni}

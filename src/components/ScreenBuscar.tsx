@@ -10,6 +10,7 @@ import {
 } from '../services/supabaseService';
 import { DEFAULTS } from '../assets/cardAssets';
 import { CardPreview, CardState } from './CardPreview';
+import { isoADmy } from '../utils/dateHelpers';
 import { Search, Loader2, UserCheck, Eye, Printer, Download } from 'lucide-react';
 
 interface ScreenBuscarProps {
@@ -61,14 +62,6 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toUpperCase();
-  }
-
-  function isoADmy(iso: string | null): string {
-    if (!iso) return '';
-    const s = String(iso).slice(0, 10);
-    const parts = s.split('-');
-    if (parts.length !== 3) return '';
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
 
   const handleBuscar = async () => {
@@ -186,33 +179,33 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Buscador superior */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs">
-        <label className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 block">
+      {/* Buscador superior (Div principal #f4f4f2) */}
+      <div className="bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs">
+        <label className="text-xs font-bold text-[#1a1a1a] mb-1.5 block">
           Documento (DNI/CE), Apellidos o Nombres
         </label>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#555552] absolute left-3 top-2.5" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
               placeholder="Ej. 07557840 o Flores..."
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-red-600"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#dcdcd8] rounded-lg text-[#1a1a1a] focus:outline-none focus:border-[#e11d2e]"
             />
           </div>
           <button
             onClick={handleBuscar}
-            className="file-btn text-xs font-bold px-4 py-2"
+            className="file-btn text-xs font-bold px-4 py-2 bg-[#e11d2e] hover:bg-[#c81926] text-white border-none"
           >
             Buscar
           </button>
         </div>
 
         {status.msg && (
-          <div className={`db-status ${status.kind} mt-2 text-xs`}>
+          <div className={`db-status ${status.kind} mt-2 text-xs font-semibold`}>
             {status.kind === 'loading' && (
               <Loader2 className="w-3.5 h-3.5 inline animate-spin mr-1" />
             )}
@@ -223,21 +216,21 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
 
       {/* Área dividida: Resultados a la izquierda y Vista Previa en vivo a la derecha (SIN cambiar de pantalla) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Columna Izquierda: Resultados encontrados */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+        {/* Columna Izquierda: Resultados encontrados (Div principal #f4f4f2) */}
+        <div className="lg:col-span-5 bg-[#f4f4f2] border border-[#dcdcd8] rounded-xl p-4 shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">
               Resultados de la Búsqueda ({results.length})
             </h3>
             {results.length > 0 && (
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-[#555552]">
                 Selecciona uno para ver su carnet
               </span>
             )}
           </div>
 
           {!results.length ? (
-            <div className="text-center py-10 text-xs text-slate-400 dark:text-slate-500">
+            <div className="text-center py-10 text-xs text-[#555552]">
               Ingresa un DNI o apellido en el buscador para ver las coincidencias y su carnet.
             </div>
           ) : (
@@ -268,15 +261,15 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
                   <div
                     key={`${r.NumeroDocumento}-${i}`}
                     onClick={() => handleCargarEnPreview(r)}
-                    className={`search-result-card m-0 p-3 rounded-xl border transition-all cursor-pointer ${
+                    className={`search-result-card m-0 p-3 rounded-xl transition-all cursor-pointer bg-white ${
                       isSelected
-                        ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700'
+                        ? 'border-2 border-[#e11d2e] shadow-xs'
+                        : 'border border-[#dcdcd8] hover:border-[#e11d2e]'
                     }`}
                   >
                     <img src={foto} className="w-10 h-10 rounded-lg object-cover" alt="" />
                     <div className="info">
-                      <b className="text-black font-extrabold flex items-center gap-1.5 text-xs">
+                      <b className="text-[#1a1a1a] font-extrabold flex items-center gap-1.5 text-xs">
                         {isJugador ? (
                           <span className="tipo-badge jugador">Jugador</span>
                         ) : (
@@ -284,7 +277,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
                         )}
                         {r.Apellidos || ''} {r.Nombres || ''}
                       </b>
-                      <span className="text-[11.5px] text-black font-bold block mt-0.5">
+                      <span className="text-[11.5px] text-[#555552] font-semibold block mt-0.5">
                         DNI: {r.NumeroDocumento || ''} · {clubOCargo}
                         {categoria ? ' · ' + categoria : ''}
                         {estadoStr ? ' · ' + estadoStr : ''}
@@ -297,16 +290,16 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
           )}
         </div>
 
-        {/* Columna Derecha: Vista previa en vivo en la MISMA pantalla Buscar */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col items-center">
-          <div className="w-full flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-              <Eye className="w-4 h-4 text-emerald-600" />
+        {/* Columna Derecha: Vista previa en vivo en la MISMA pantalla Buscar (Div principal #f4f4f2) */}
+        <div className="lg:col-span-7 bg-[#f4f4f2] border border-[#dcdcd8] rounded-xl p-5 shadow-xs flex flex-col items-center">
+          <div className="w-full flex items-center justify-between border-b border-[#dcdcd8] pb-3 mb-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-1.5">
+              <Eye className="w-4 h-4 text-[#e11d2e]" />
               Vista Previa en Vivo (Sin cambiar de pantalla)
             </h3>
             <button
               onClick={() => onOpenCardModal(previewCard)}
-              className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              className="text-xs text-[#e11d2e] font-bold hover:underline"
             >
               Abrir en Pantalla Emergente
             </button>

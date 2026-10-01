@@ -9,6 +9,7 @@ import {
 import { DEFAULTS } from '../assets/cardAssets';
 import { CardState } from './CardPreview';
 import { DateInput } from './DateInput';
+import { isoADmy, dmyAIso } from '../utils/dateHelpers';
 import { Search, Plus, Save, Upload, Eye, Briefcase } from 'lucide-react';
 
 interface ScreenAdminProps {
@@ -45,28 +46,6 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/.test(str.trim()) && str.trim().length > 0;
   }
 
-  function dmyAIso(str: string): string | null {
-    const s = str.trim();
-    if (!s) return '';
-    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return null;
-    const d = parseInt(m[1], 10),
-      mo = parseInt(m[2], 10),
-      y = parseInt(m[3], 10);
-    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
-    const dt = new Date(y, mo - 1, d);
-    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
-    return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
-
-  function isoADmy(iso: string | null): string {
-    if (!iso) return '';
-    const s = String(iso).slice(0, 10);
-    const parts = s.split('-');
-    if (parts.length !== 3) return '';
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-
   const generarCardStateAdmin = (adm: Administrativo): CardState => {
     const cargoObj = cargosCache.find((c) => c.cargo === adm.ClubCargo);
 
@@ -83,7 +62,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       logoScale: 100,
       headerUrl: DEFAULTS.header,
       footerUrl: cargoObj && cargoObj.pie_url ? cargoObj.pie_url : DEFAULTS.footer,
-      footerHeight: 21,
+      footerHeight: 20,
       fnac: isoADmy(adm.FechaNacimiento) || 'dd/mm/aaaa',
       dni: adm.NumeroDocumento || '00000000',
       backTopUrl: DEFAULTS.backtop,
@@ -221,22 +200,22 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     <div className="space-y-4">
       {/* Distribución equilibrada en 2 columnas (evita ventana larga) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Columna Izquierda (6 cols): Buscador y Lista de Administrativos */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-              <Briefcase className="w-4 h-4 text-purple-600" />
+        {/* Columna Izquierda (6 cols): Buscador y Lista de Administrativos (Div principal #f4f4f2) */}
+        <div className="lg:col-span-6 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-1.5">
+              <Briefcase className="w-4 h-4 text-[#e11d2e]" />
               Directorio Administrativo
             </h2>
             <button
               onClick={handleNuevo}
-              className="file-btn text-xs py-1 px-2.5"
+              className="file-btn text-xs py-1 px-2.5 bg-[#e11d2e] hover:bg-[#c81926] text-white border-none font-bold"
             >
               <Plus className="w-3.5 h-3.5" /> Nuevo
             </button>
           </div>
 
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+          <label className="text-xs font-bold text-[#1a1a1a] block">
             Buscar (DNI o apellidos)
           </label>
           <div className="file-row">
@@ -246,7 +225,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
               placeholder="Ej. 07557840 o Flores"
-              className="flex-1 text-xs"
+              className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8]"
             />
             <button onClick={handleBuscar} className="file-btn alt text-xs">
               <Search className="w-3.5 h-3.5" /> Buscar
@@ -258,23 +237,23 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
               {searchResults.map((r) => (
                 <div
                   key={r.NumeroDocumento}
-                  className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between gap-2"
+                  className="p-2.5 rounded-lg border border-[#dcdcd8] hover:border-[#e11d2e] bg-white flex items-center justify-between gap-2 transition-colors"
                 >
                   <div
                     onClick={() => cargarAdminEnFormulario(r)}
                     className="cursor-pointer flex-1"
                   >
-                    <b className="text-xs text-black font-extrabold block">
+                    <b className="text-xs text-[#1a1a1a] font-extrabold block">
                       {r.Apellidos} {r.Nombres}
                     </b>
-                    <span className="text-[11.5px] text-black font-bold block">
+                    <span className="text-[11.5px] text-[#555552] font-semibold block">
                       {r.TipoDocumento}: {r.NumeroDocumento} · {r.ClubCargo}
                     </span>
                   </div>
 
                   <button
                     onClick={() => onOpenCardModal(generarCardStateAdmin(r))}
-                    className="p-1.5 text-emerald-600 hover:text-emerald-700 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md"
+                    className="p-1.5 text-[#e11d2e] hover:text-[#c81926] bg-[#f4f4f2] border border-[#dcdcd8] rounded-md"
                     title="Ver carnet emergente / Imprimir"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -285,10 +264,10 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           )}
         </div>
 
-        {/* Columna Derecha (6 cols): Formulario de Registro / Edición */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+        {/* Columna Derecha (6 cols): Formulario de Registro / Edición (Div principal #f4f4f2) */}
+        <div className="lg:col-span-6 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">
               {editingAdmin
                 ? `✎ Editando: ${editingAdmin.Apellidos} ${editingAdmin.Nombres}`
                 : '＋ Registrar Administrativo'}
@@ -297,7 +276,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-[#1a1a1a]">
                 Tipo documento
               </label>
               <select value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value)}>
@@ -307,7 +286,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-[#1a1a1a]">
                 N° Documento
               </label>
               <input
@@ -321,7 +300,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <label className="text-xs font-bold text-[#1a1a1a]">
               Apellidos
             </label>
             <input
@@ -333,7 +312,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <label className="text-xs font-bold text-[#1a1a1a]">
               Nombres
             </label>
             <input
@@ -346,7 +325,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-[#1a1a1a]">
                 Cargo
               </label>
               <select value={cargo} onChange={(e) => setCargo(e.target.value)}>
@@ -358,7 +337,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-[#1a1a1a]">
                 Fecha nacimiento
               </label>
               <DateInput
@@ -370,7 +349,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <label className="text-xs font-bold text-[#1a1a1a]">
               Fotografía
             </label>
             <div className="file-row">

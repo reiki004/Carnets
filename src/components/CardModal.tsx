@@ -21,18 +21,18 @@ export const CardModal: React.FC<CardModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
-      <div className="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-5xl w-full p-6 shadow-2xl relative space-y-4 my-auto animate-in fade-in zoom-in-95">
-        {/* Cabecera del Modal */}
-        <div className="flex items-center justify-between border-b border-slate-300 dark:border-slate-800 pb-3">
+      <div className="bg-[#f4f4f2] border border-[#dcdcd8] rounded-2xl max-w-5xl w-full p-6 shadow-2xl relative space-y-4 my-auto animate-in fade-in zoom-in-95">
+        {/* Cabecera del Modal (Div encabezado con texto blanco o rojo) */}
+        <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-3">
           <div className="flex items-center gap-2">
-            <Printer className="w-5 h-5 text-red-600 dark:text-red-400" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            <Printer className="w-5 h-5 text-[#e11d2e]" />
+            <h2 className="text-base font-bold text-[#1a1a1a]">
               Vista Previa e Impresión de Carnet (Zebra ZC300)
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="text-[#555552] hover:text-[#1a1a1a] p-1.5 rounded-lg hover:bg-white transition-colors cursor-pointer"
             title="Cerrar ventana"
           >
             <X className="w-5 h-5" />

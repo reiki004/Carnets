@@ -75,13 +75,12 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
   const [isPrinting, setIsPrinting] = useState(false);
 
   const handlePrint = async () => {
-    if (onPrint) {
-      onPrint();
-      return;
-    }
     try {
       setIsPrinting(true);
       await printCardDirectly(card, frontRef.current, backRef.current);
+      if (onPrint) {
+        onPrint();
+      }
     } catch (err) {
       console.error('Error al imprimir directamente:', err);
       window.print();
@@ -101,6 +100,8 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           pixelRatio: 4,
           quality: 1,
           backgroundColor: '#ffffff',
+          skipFonts: true,
+          fontEmbedCSS: '',
         });
         const link = document.createElement('a');
         link.download = `carnet_frente_${sanitized}.png`;
@@ -114,6 +115,8 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           pixelRatio: 4,
           quality: 1,
           backgroundColor: '#ffffff',
+          skipFonts: true,
+          fontEmbedCSS: '',
         });
         const link2 = document.createElement('a');
         link2.download = `carnet_dorso_${sanitized}.png`;
@@ -135,28 +138,28 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
       <div className="w-full max-w-3xl flex items-center justify-between no-print px-1 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {isAdmin ? (
-            <span className="text-[11px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-300 px-2.5 py-0.5 rounded-full">
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-black/10 text-[#1a1a1a] border border-black/20 px-2.5 py-0.5 rounded-full">
               Personal Administrativo
             </span>
           ) : (
-            <span className="text-[11px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-[#e11d2e]/10 text-[#e11d2e] border border-[#e11d2e]/30 px-2.5 py-0.5 rounded-full">
               Jugador / Socio
             </span>
           )}
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <span className="text-xs font-bold text-[#555552]">
             CR-80 · 55 × 86.5 mm
           </span>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Selector de tamaño de tarjeta en pantalla */}
-          <div className="flex items-center bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-bold">
+          <div className="flex items-center bg-[#f4f4f2] p-0.5 rounded-lg border border-[#dcdcd8] text-xs font-bold">
             <button
               onClick={() => setCardScale('normal')}
               className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
                 cardScale === 'normal'
-                  ? 'bg-white text-black shadow-xs font-black'
-                  : 'text-slate-700 dark:text-slate-300 hover:text-black'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-[#555552] hover:text-[#1a1a1a]'
               }`}
               title="Tamaño estándar (280px)"
             >
@@ -166,8 +169,8 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
               onClick={() => setCardScale('grande')}
               className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
                 cardScale === 'grande'
-                  ? 'bg-white text-black shadow-xs font-black'
-                  : 'text-slate-700 dark:text-slate-300 hover:text-black'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-[#555552] hover:text-[#1a1a1a]'
               }`}
               title="Tamaño grande (330px)"
             >
@@ -177,8 +180,8 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
               onClick={() => setCardScale('xl')}
               className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
                 cardScale === 'xl'
-                  ? 'bg-white text-black shadow-xs font-black'
-                  : 'text-slate-700 dark:text-slate-300 hover:text-black'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-[#555552] hover:text-[#1a1a1a]'
               }`}
               title="Tamaño extra grande (380px)"
             >
@@ -188,10 +191,10 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
 
           <button
             onClick={handleExportPng}
-            className="text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
+            className="text-xs font-bold text-[#1a1a1a] hover:bg-[#f4f4f2] flex items-center gap-1.5 bg-white border border-[#dcdcd8] px-3 py-1.5 rounded-lg shadow-xs transition-all cursor-pointer"
             title="Descargar imagen en 300 DPI"
           >
-            <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <Download className="w-3.5 h-3.5 text-[#e11d2e]" />
             Descargar PNG (300 DPI)
           </button>
         </div>
@@ -325,10 +328,10 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
 
       {/* Niveladores de Tamaño para Foto y Logo (Sliders) */}
       {showControls && onUpdateCard && (
-        <div className="w-full max-w-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-4 rounded-xl shadow-xs text-xs space-y-3 no-print">
-          <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100">
+        <div className="w-full max-w-lg bg-white border border-[#dcdcd8] p-4 rounded-xl shadow-xs text-xs space-y-3 no-print">
+          <div className="flex items-center justify-between font-bold text-[#1a1a1a]">
             <span className="flex items-center gap-1.5">
-              <Sliders className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <Sliders className="w-4 h-4 text-[#e11d2e]" />
               Niveladores de Tamaño y Encuadre
             </span>
             <button
@@ -342,7 +345,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                   footerHeight: 20,
                 }));
               }}
-              className="text-[11px] font-bold text-slate-600 hover:text-red-600 dark:text-slate-300 dark:hover:text-red-400 flex items-center gap-1 cursor-pointer"
+              className="text-[11px] font-bold text-[#555552] hover:text-[#e11d2e] flex items-center gap-1 cursor-pointer transition-colors"
             >
               <RotateCcw className="w-3 h-3" /> Restablecer 100%
             </button>
@@ -351,9 +354,9 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           <div className="grid grid-cols-2 gap-3 pt-1">
             {/* Zoom Foto */}
             <div>
-              <div className="flex justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">
+              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
                 <span>Zoom Foto</span>
-                <span className="font-mono text-red-600 dark:text-red-400">{card.photoScale ?? 100}%</span>
+                <span className="font-mono text-[#e11d2e] font-bold">{card.photoScale ?? 100}%</span>
               </div>
               <input
                 type="range"
@@ -364,16 +367,16 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                   const val = Number(e.target.value);
                   onUpdateCard((prev) => ({ ...prev, photoScale: val }));
                 }}
-                className="w-full accent-red-600 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                className="w-full accent-[#e11d2e] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
               />
             </div>
 
             {/* Escala Logo */}
             {!isAdmin ? (
               <div>
-                <div className="flex justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
                   <span>Tamaño Escudo</span>
-                  <span className="font-mono text-amber-600 dark:text-amber-400">{card.logoScale ?? 100}%</span>
+                  <span className="font-mono text-[#1a1a1a] font-bold">{card.logoScale ?? 100}%</span>
                 </div>
                 <input
                   type="range"
@@ -384,25 +387,25 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                     const val = Number(e.target.value);
                     onUpdateCard((prev) => ({ ...prev, logoScale: val }));
                   }}
-                  className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                  className="w-full accent-[#1a1a1a] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
                 />
               </div>
             ) : (
               <div>
-                <div className="flex justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">
+                <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
                   <span>Altura Pie Inferior</span>
-                  <span className="font-mono text-amber-600 dark:text-amber-400">{card.footerHeight ?? 21}%</span>
+                  <span className="font-mono text-[#e11d2e] font-bold">{card.footerHeight ?? 20}%</span>
                 </div>
                 <input
                   type="range"
                   min="16"
                   max="28"
-                  value={card.footerHeight ?? 21}
+                  value={card.footerHeight ?? 20}
                   onChange={(e) => {
                     const val = Number(e.target.value);
                     onUpdateCard((prev) => ({ ...prev, footerHeight: val }));
                   }}
-                  className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                  className="w-full accent-[#e11d2e] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
                 />
               </div>
             )}
@@ -411,9 +414,9 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           {/* Desplazamiento X / Y Foto */}
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div>
-              <div className="flex justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">
+              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
                 <span>Mover Foto H.</span>
-                <span className="font-mono">{card.photoOffsetX ?? 0}px</span>
+                <span className="font-mono text-[#555552]">{card.photoOffsetX ?? 0}px</span>
               </div>
               <input
                 type="range"
@@ -424,14 +427,14 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                   const val = Number(e.target.value);
                   onUpdateCard((prev) => ({ ...prev, photoOffsetX: val }));
                 }}
-                className="w-full accent-slate-700 cursor-pointer h-1 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                className="w-full accent-[#555552] cursor-pointer h-1 bg-[#e9e9e6] rounded-lg"
               />
             </div>
 
             <div>
-              <div className="flex justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">
+              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
                 <span>Mover Foto V.</span>
-                <span className="font-mono">{card.photoOffsetY ?? 0}px</span>
+                <span className="font-mono text-[#555552]">{card.photoOffsetY ?? 0}px</span>
               </div>
               <input
                 type="range"
@@ -442,7 +445,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                   const val = Number(e.target.value);
                   onUpdateCard((prev) => ({ ...prev, photoOffsetY: val }));
                 }}
-                className="w-full accent-slate-700 cursor-pointer h-1 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                className="w-full accent-[#555552] cursor-pointer h-1 bg-[#e9e9e6] rounded-lg"
               />
             </div>
           </div>
@@ -450,20 +453,20 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           {/* Control de altura del pie inferior para jugador */}
           {!isAdmin && (
             <div className="pt-1">
-              <div className="flex justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200 mb-1">
+              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
                 <span>Espacio / Altura Pie Inferior</span>
-                <span className="font-mono text-amber-600 dark:text-amber-400">{card.footerHeight ?? 21}%</span>
+                <span className="font-mono text-[#e11d2e] font-bold">{card.footerHeight ?? 20}%</span>
               </div>
               <input
                 type="range"
                 min="16"
                 max="28"
-                value={card.footerHeight ?? 21}
+                value={card.footerHeight ?? 20}
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   onUpdateCard((prev) => ({ ...prev, footerHeight: val }));
                 }}
-                className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                className="w-full accent-[#e11d2e] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
               />
             </div>
           )}

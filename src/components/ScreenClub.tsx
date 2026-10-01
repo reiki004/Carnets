@@ -13,6 +13,8 @@ import {
 import { DEFAULTS } from '../assets/cardAssets';
 import { CardState } from './CardPreview';
 import { DateInput } from './DateInput';
+import { printMultipleCardsDirectly } from '../utils/printHelpers';
+import { normalizarFechaIso, isoADmy, dmyAIso } from '../utils/dateHelpers';
 import {
   Printer,
   Upload,
@@ -98,28 +100,6 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/.test(str.trim()) && str.trim().length > 0;
   }
 
-  function dmyAIso(str: string): string | null {
-    const s = str.trim();
-    if (!s) return '';
-    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return null;
-    const d = parseInt(m[1], 10),
-      mo = parseInt(m[2], 10),
-      y = parseInt(m[3], 10);
-    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
-    const dt = new Date(y, mo - 1, d);
-    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
-    return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
-
-  function isoADmy(iso: string | null): string {
-    if (!iso) return '';
-    const s = String(iso).slice(0, 10);
-    const parts = s.split('-');
-    if (parts.length !== 3) return '';
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-
   // Cargar jugadores del club seleccionado
   const loadJugadores = async () => {
     if (!selectedClubId) {
@@ -167,7 +147,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       logoScale: 100,
       headerUrl: DEFAULTS.header,
       footerUrl: estObj && estObj.pie_url ? estObj.pie_url : DEFAULTS.footer,
-      footerHeight: 21,
+      footerHeight: 20,
       fnac: isoADmy(j.FechaNacimiento) || 'dd/mm/aaaa',
       dni: j.NumeroDocumento || '00000000',
       backTopUrl: DEFAULTS.backtop,
@@ -309,6 +289,21 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       alert('Marca al menos un jugador de la lista con su casilla.');
       return;
     }
+
+    if (checks.length > 1) {
+      const selectedCards = checks
+        .map((chk) => {
+          const jug = jugadores.find((j: Jugador) => j.NumeroDocumento === chk.value);
+          return jug ? generarCardState(jug) : null;
+        })
+        .filter(Boolean) as CardState[];
+
+      if (selectedCards.length > 0) {
+        await printMultipleCardsDirectly(selectedCards);
+        return;
+      }
+    }
+
     const docNum = checks[0].value;
     const jug = jugadores.find((j: Jugador) => j.NumeroDocumento === docNum);
     if (jug) {
@@ -346,7 +341,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           NumeroDocumento: String(row.NumeroDocumento || '').trim(),
           Apellidos: String(row.Apellidos || '').trim(),
           Nombres: String(row.Nombres || '').trim(),
-          FechaNacimiento: String(row.FechaNacimiento || '').trim(),
+          FechaNacimiento: normalizarFechaIso(row.FechaNacimiento) || '',
           Club: String(row.Club || '').trim(),
           Categoria: String(row.Categoria || '').trim(),
           Estado: normalizarEstado(row.Estado),
@@ -365,6 +360,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
         const motivos: string[] = [];
         if (!/^\d{8}$/.test(r.NumeroDocumento)) motivos.push('documento debe ser 8 dígitos numéricos');
         if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos');
+        if (!r.FechaNacimiento) motivos.push('fecha de nacimiento inválida (use formato DD/MM/AAAA o fecha estándar)');
 
         const clubEncontrado = clubes.find(
           (c) => c.NombreClub.toUpperCase() === r.Club.toUpperCase()
@@ -419,7 +415,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           NumeroDocumento: r.NumeroDocumento,
           Apellidos: r.Apellidos.toUpperCase(),
           Nombres: r.Nombres.toUpperCase(),
-          FechaNacimiento: dmyAIso(r.FechaNacimiento) || r.FechaNacimiento,
+          FechaNacimiento: normalizarFechaIso(r.FechaNacimiento) || r.FechaNacimiento,
           ClubID: r.__clubId,
           Categoria: r.__categoriaResuelta,
           Categoria2: null,
@@ -538,16 +534,16 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Barra superior: Selector de Club & Filtros */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3">
+      {/* Barra superior: Selector de Club & Filtros (Div principal #f4f4f2) */}
+      <div className="bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[260px]">
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+          <span className="text-xs font-bold text-[#1a1a1a] whitespace-nowrap">
             Club:
           </span>
           <select
             value={selectedClubId}
             onChange={(e) => setSelectedClubId(e.target.value)}
-            className="flex-1 text-xs"
+            className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8]"
           >
             <option value="">— Selecciona un club —</option>
             {clubes.map((c) => (
@@ -567,13 +563,13 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+            <span className="text-xs font-bold text-[#555552]">
               Categoría:
             </span>
             <select
               value={categoriaFiltro}
               onChange={(e) => setCategoriaFiltro(e.target.value)}
-              className="text-xs py-1.5 px-2"
+              className="text-xs py-1.5 px-2 bg-white text-[#1a1a1a] border border-[#dcdcd8]"
             >
               <option value="">Todas</option>
               {categorias.map((cat) => (
@@ -589,46 +585,46 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
             value={textoFiltro}
             onChange={(e) => setTextoFiltro(e.target.value)}
             placeholder="Filtrar por DNI o Apellidos..."
-            className="text-xs py-1.5 px-3 w-48"
+            className="text-xs py-1.5 px-3 w-48 bg-white text-[#1a1a1a] border border-[#dcdcd8]"
           />
         </div>
       </div>
 
       {/* Distribución equilibrada en 2 Columnas (evita ventanas largas) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* COLUMNA 1 (IZQUIERDA - 7 COLS): TABLA DE JUGADORES */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+        {/* COLUMNA 1 (IZQUIERDA - 7 COLS): TABLA DE JUGADORES (Div principal #f4f4f2) */}
+        <div className="lg:col-span-7 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-2">
               <span>Jugadores del Club ({filteredJugadores.length})</span>
             </h2>
 
             {filteredJugadores.length > 0 && (
               <button
                 onClick={handlePrintSelected}
-                className="file-btn text-xs font-semibold py-1 px-2.5"
+                className="file-btn text-xs font-bold py-1 px-2.5 bg-[#e11d2e] hover:bg-[#c81926] text-white border-none"
               >
-                <Printer className="w-3 h-3" /> Imprimir seleccionados
+                <Printer className="w-3 h-3 text-white" /> Imprimir seleccionados
               </button>
             )}
           </div>
 
           {!selectedClubId ? (
-            <div className="jug-empty text-center py-12 text-slate-400">
+            <div className="jug-empty text-center py-12 text-[#555552]">
               Selecciona un club arriba para ver y gestionar su nómina de jugadores.
             </div>
           ) : loadingList ? (
-            <div className="jug-empty text-center py-12 text-slate-400">
+            <div className="jug-empty text-center py-12 text-[#555552]">
               Cargando jugadores…
             </div>
           ) : !filteredJugadores.length ? (
-            <div className="jug-empty text-center py-12 text-slate-400">
+            <div className="jug-empty text-center py-12 text-[#555552]">
               {jugadores.length
                 ? 'Sin coincidencias con el filtro aplicado.'
                 : 'Este club aún no tiene jugadores registrados. Agrégalos en el panel derecho.'}
             </div>
           ) : (
-            <div className="max-h-[540px] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+            <div className="max-h-[540px] overflow-y-auto border border-[#dcdcd8] rounded-lg bg-white">
               <table className="jug-table m-0">
                 <thead>
                   <tr>
@@ -658,18 +654,18 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                         />
                       </td>
                       <td>
-                        <b className="text-black font-extrabold text-sm block">
+                        <b className="text-slate-900 dark:text-white font-extrabold text-sm block">
                           {j.Apellidos} {j.Nombres}
                         </b>
-                        <span className="block text-[11px] font-bold text-black">
+                        <span className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                           {normalizarEstado(j.Estado)}
                         </span>
                       </td>
-                      <td className="font-mono text-xs font-black text-black">{j.NumeroDocumento}</td>
-                      <td className="text-xs font-black text-black">
+                      <td className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">{j.NumeroDocumento}</td>
+                      <td className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                         {j.Categoria}
                         {j.Categoria2 ? (
-                          <span className="block text-[10.5px] font-bold text-black">
+                          <span className="block text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
                             {j.Categoria2}
                           </span>
                         ) : null}
@@ -705,16 +701,16 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           )}
         </div>
 
-        {/* COLUMNA 2 (DERECHA - 5 COLS): PANELES EN PESTAÑAS (NUEVO JUGADOR / EXCEL / FOTOS) */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs space-y-4">
+        {/* COLUMNA 2 (DERECHA - 5 COLS): PANELES EN PESTAÑAS (Div principal #f4f4f2) */}
+        <div className="lg:col-span-5 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-4">
           {/* Navegación por pestañas para no hacer la ventana larga */}
-          <div className="flex border-b border-slate-200 dark:border-slate-800 pb-1 gap-1">
+          <div className="flex border-b border-[#dcdcd8] pb-1 gap-1">
             <button
               onClick={() => setActiveTabRight('form')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 activeTabRight === 'form'
-                  ? 'bg-red-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-[#e11d2e] text-white'
+                  : 'text-[#555552] hover:bg-[#e9e9e6] hover:text-[#1a1a1a]'
               }`}
             >
               {editingJugador ? '✎ Editar' : '＋ Nuevo'}
@@ -723,8 +719,8 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               onClick={() => setActiveTabRight('excel')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 activeTabRight === 'excel'
-                  ? 'bg-red-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-[#e11d2e] text-white'
+                  : 'text-[#555552] hover:bg-[#e9e9e6] hover:text-[#1a1a1a]'
               }`}
             >
               📥 Importar Excel
@@ -733,8 +729,8 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               onClick={() => setActiveTabRight('fotos')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 activeTabRight === 'fotos'
-                  ? 'bg-red-600 text-white'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-[#e11d2e] text-white'
+                  : 'text-[#555552] hover:bg-[#e9e9e6] hover:text-[#1a1a1a]'
               }`}
             >
               📁 Fotos Carpeta
@@ -946,7 +942,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                         disabled={!r.__valid}
                       />
                       <span className="flex-1 text-xs">
-                        <b>{r.Apellidos} {r.Nombres}</b> — {r.NumeroDocumento} ({r.Club})
+                        <b>{r.Apellidos} {r.Nombres}</b> — {r.NumeroDocumento} ({r.Club}) {r.FechaNacimiento ? `· F.Nac: ${isoADmy(r.FechaNacimiento)}` : ''}
                         {!r.__valid ? (
                           <small className="block text-red-600">
                             {r.__motivos.join('; ')}

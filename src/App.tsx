@@ -131,13 +131,15 @@ export default function App() {
   };
 
   const handlePrintCard = () => {
-    printCardDirectly(modalCard);
+    const frontEl = document.getElementById('cardFront');
+    const backEl = document.getElementById('cardBack');
+    printCardDirectly(modalCard, frontEl, backEl);
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-      {/* 1. BARRA SUPERIOR DE NAVEGACIÓN COMPACTA Y MODERNA */}
-      <header className="screen-nav no-print sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs px-4 py-2 flex items-center justify-between">
+    <div className="min-h-screen bg-[#e9e9e6] text-[#1a1a1a] flex flex-col font-sans transition-colors duration-200">
+      {/* 1. BARRA SUPERIOR DE NAVEGACIÓN (DIV ENCABEZADO #e11d2e CON TEXTOS #ffffff) */}
+      <header className="screen-nav no-print sticky top-0 z-40 bg-[#e11d2e] border-b border-[#c81926] shadow-sm px-4 py-2 flex items-center justify-between text-white">
         <div className="flex items-center gap-3">
           {/* Logo en la parte superior izquierda de la aplicación: Imagen del Encabezado */}
           <div
@@ -148,60 +150,60 @@ export default function App() {
             <img
               src={DEFAULTS.header}
               alt="INTER CLUBES"
-              className="h-10 w-auto rounded object-contain shadow-xs border border-black/30"
+              className="h-10 w-auto rounded object-contain shadow-xs border border-white/30 bg-white"
             />
-            <span className="hidden md:inline-block ml-1 text-[10px] font-extrabold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded-full border border-slate-300 dark:border-slate-700">
+            <span className="hidden md:inline-block ml-1 text-[10px] font-extrabold uppercase tracking-wider bg-black/25 text-white px-2 py-0.5 rounded-full border border-white/30">
               Zebra ZC300 CR-80
             </span>
           </div>
 
           {/* Menú de 5 Pestañas con alto contraste */}
-          <div className="hidden sm:flex items-center gap-1 ml-3 bg-slate-200/90 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-300 dark:border-slate-700">
+          <div className="hidden sm:flex items-center gap-1 ml-3 bg-black/20 p-1 rounded-xl border border-white/20">
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'inicio'
-                  ? 'bg-red-600 text-white shadow-xs font-black'
-                  : 'text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
               }`}
               onClick={() => irAPantalla('inicio')}
             >
               🏠 Inicio
             </button>
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'buscar'
-                  ? 'bg-red-600 text-white shadow-xs font-black'
-                  : 'text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
               }`}
               onClick={() => irAPantalla('buscar')}
             >
               🔍 Buscar
             </button>
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'club'
-                  ? 'bg-red-600 text-white shadow-xs font-black'
-                  : 'text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
               }`}
               onClick={() => irAPantalla('club')}
             >
               ⚽ Club
             </button>
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'admin'
-                  ? 'bg-red-600 text-white shadow-xs font-black'
-                  : 'text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
               }`}
               onClick={() => irAPantalla('admin')}
             >
               🧑‍💼 Admin.
             </button>
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'config'
-                  ? 'bg-red-600 text-white shadow-xs font-black'
-                  : 'text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
+                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
               }`}
               onClick={() => irAPantalla('config')}
             >
@@ -215,65 +217,65 @@ export default function App() {
           {/* Botón de Modelo Predeterminado */}
           <button
             onClick={() => handleOpenCardModal(DEFAULT_CARD_STATE)}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-black/20 hover:bg-black/30 border border-white/30 transition-colors cursor-pointer"
             title="Ver o editar el modelo base de carnet"
           >
-            <Layers className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <Layers className="w-3.5 h-3.5 text-white" />
             <span>Modelo Base</span>
           </button>
 
           {/* Botón Guía Zebra ZC300 */}
           <button
             onClick={() => setShowZebraModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-black/20 hover:bg-black/30 border border-white/30 transition-colors cursor-pointer"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
+            <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
             <span className="hidden md:inline">Guía Zebra ZC300</span>
           </button>
 
           {/* Conmutador Modo Claro / Modo Oscuro */}
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="flex items-center gap-1.5 p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 p-2 rounded-lg text-white bg-black/20 hover:bg-black/30 border border-white/30 transition-colors cursor-pointer"
             title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
           >
             {isDarkMode ? (
-              <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" />
+              <Sun className="w-4 h-4 text-amber-300 animate-spin-slow" />
             ) : (
-              <Moon className="w-4 h-4 text-indigo-600" />
+              <Moon className="w-4 h-4 text-white" />
             )}
           </button>
         </div>
       </header>
 
       {/* Menú móvil */}
-      <div className="sm:hidden flex items-center justify-around bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-1.5 no-print">
+      <div className="sm:hidden flex items-center justify-around bg-[#e11d2e] border-b border-[#c81926] py-1.5 no-print px-2 gap-1 text-white">
         <button
-          className={`px-2 py-1 text-xs font-bold ${activeScreen === 'inicio' ? 'text-red-600 font-extrabold' : 'text-slate-500'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'inicio' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
           onClick={() => irAPantalla('inicio')}
         >
           Inicio
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold ${activeScreen === 'buscar' ? 'text-red-600 font-extrabold' : 'text-slate-500'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'buscar' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
           onClick={() => irAPantalla('buscar')}
         >
           Buscar
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold ${activeScreen === 'club' ? 'text-red-600 font-extrabold' : 'text-slate-500'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'club' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
           onClick={() => irAPantalla('club')}
         >
           Club
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold ${activeScreen === 'admin' ? 'text-red-600 font-extrabold' : 'text-slate-500'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'admin' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
           onClick={() => irAPantalla('admin')}
         >
           Admin.
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold ${activeScreen === 'config' ? 'text-red-600 font-extrabold' : 'text-slate-500'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'config' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
           onClick={() => irAPantalla('config')}
         >
           Config
