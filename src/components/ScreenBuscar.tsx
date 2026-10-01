@@ -17,6 +17,7 @@ interface ScreenBuscarProps {
   cargosCache: any[];
   estadosCache: any[];
   onOpenCardModal: (card: CardState) => void;
+  onSelectCard?: (card: CardState) => void;
 }
 
 export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
@@ -24,6 +25,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
   cargosCache,
   estadosCache,
   onOpenCardModal,
+  onSelectCard,
 }) => {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<{ msg: string; kind: 'ok' | 'err' | 'loading' | '' }>({
@@ -47,7 +49,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
     logoScale: 100,
     headerUrl: DEFAULTS.header,
     footerUrl: DEFAULTS.footer,
-    footerHeight: 21,
+    footerHeight: 20,
     fnac: 'dd/mm/aaaa',
     dni: '00000000',
     backTopUrl: DEFAULTS.backtop,
@@ -133,7 +135,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         (e) => String(e.estado).toUpperCase() === estNombre.toUpperCase()
       );
 
-      setPreviewCard({
+      const newCard: CardState = {
         tipo: 'socio',
         apellidos: j.Apellidos || 'APELLIDO',
         nombres: j.Nombres || 'NOMBRE',
@@ -146,17 +148,19 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         logoScale: 100,
         headerUrl: DEFAULTS.header,
         footerUrl: estObj && estObj.pie_url ? estObj.pie_url : DEFAULTS.footer,
-        footerHeight: 21,
+        footerHeight: 20,
         fnac: isoADmy(j.FechaNacimiento) || 'dd/mm/aaaa',
         dni: j.NumeroDocumento || '00000000',
         backTopUrl: DEFAULTS.backtop,
         backBottomUrl: DEFAULTS.backbottom,
-      });
+      };
+      setPreviewCard(newCard);
+      onSelectCard?.(newCard);
     } else {
       const a = item as Administrativo;
       const cargoObj = cargosCache.find((c) => c.cargo === a.ClubCargo);
 
-      setPreviewCard({
+      const newCard: CardState = {
         tipo: 'admin',
         apellidos: a.Apellidos || 'APELLIDO',
         nombres: a.Nombres || 'NOMBRE',
@@ -169,12 +173,14 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         logoScale: 100,
         headerUrl: DEFAULTS.header,
         footerUrl: cargoObj && cargoObj.pie_url ? cargoObj.pie_url : DEFAULTS.footer,
-        footerHeight: 21,
+        footerHeight: 20,
         fnac: isoADmy(a.FechaNacimiento) || 'dd/mm/aaaa',
         dni: a.NumeroDocumento || '00000000',
         backTopUrl: DEFAULTS.backtop,
         backBottomUrl: DEFAULTS.backbottom,
-      });
+      };
+      setPreviewCard(newCard);
+      onSelectCard?.(newCard);
     }
   };
 
@@ -309,7 +315,13 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
           {/* Componente CardPreview con niveladores interactivos */}
           <CardPreview
             card={previewCard}
-            onUpdateCard={setPreviewCard}
+            onUpdateCard={(val: React.SetStateAction<CardState>) => {
+              setPreviewCard((prev) => {
+                const next = typeof val === 'function' ? val(prev) : val;
+                onSelectCard?.(next);
+                return next;
+              });
+            }}
             showPrintButton={true}
             showControls={true}
           />

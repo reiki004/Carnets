@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { DEFAULTS } from '../assets/cardAssets';
 import { toPng } from 'html-to-image';
 import { Printer, Download, Sliders, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { printCardDirectly } from '../utils/printHelpers';
 
 export interface CardState {
   tipo: 'socio' | 'admin';
@@ -71,11 +72,21 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
     xl: { w: '380px', h: '597px' },
   }[cardScale];
 
-  const handlePrint = () => {
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  const handlePrint = async () => {
     if (onPrint) {
       onPrint();
-    } else {
+      return;
+    }
+    try {
+      setIsPrinting(true);
+      await printCardDirectly(card, frontRef.current, backRef.current);
+    } catch (err) {
+      console.error('Error al imprimir directamente:', err);
       window.print();
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -464,10 +475,13 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
         <div className="actions no-print w-full max-w-md text-center">
           <button
             onClick={handlePrint}
-            className="print-btn w-full flex items-center justify-center gap-2 shadow-md hover:shadow-red-600/25 active:scale-98 transition-all font-bold"
+            disabled={isPrinting}
+            className="print-btn w-full flex items-center justify-center gap-2 shadow-md hover:shadow-red-600/25 active:scale-98 transition-all font-bold disabled:opacity-50 cursor-pointer"
           >
             <Printer className="w-5 h-5" />
-            Imprimir carnet en Zebra ZC300 (Doble Cara)
+            {isPrinting
+              ? 'Preparando carnet en 300 DPI...'
+              : 'Imprimir carnet en Zebra ZC300 (Doble Cara)'}
           </button>
         </div>
       )}

@@ -309,8 +309,11 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       alert('Marca al menos un jugador de la lista con su casilla.');
       return;
     }
-    // Abre modal o imprime lote
-    window.print();
+    const docNum = checks[0].value;
+    const jug = jugadores.find((j: Jugador) => j.NumeroDocumento === docNum);
+    if (jug) {
+      onOpenCardModal(generarCardState(jug));
+    }
   };
 
   // Plantilla Excel

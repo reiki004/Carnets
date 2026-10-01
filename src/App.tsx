@@ -12,6 +12,7 @@ import { DEFAULTS } from './assets/cardAssets';
 import { CardState, DEFAULT_CARD_STATE } from './components/CardPreview';
 import { CardModal } from './components/CardModal';
 import { PrintContainer } from './components/PrintContainer';
+import { printCardDirectly } from './utils/printHelpers';
 import { ScreenInicio } from './components/ScreenInicio';
 import { ScreenBuscar } from './components/ScreenBuscar';
 import { ScreenClub } from './components/ScreenClub';
@@ -130,7 +131,7 @@ export default function App() {
   };
 
   const handlePrintCard = () => {
-    window.print();
+    printCardDirectly(modalCard);
   };
 
   return (
@@ -296,6 +297,7 @@ export default function App() {
             cargosCache={cargosCache}
             estadosCache={estadosCache}
             onOpenCardModal={handleOpenCardModal}
+            onSelectCard={setModalCard}
           />
         )}
 

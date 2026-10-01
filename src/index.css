@@ -684,20 +684,41 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   font-weight: 800;
 }
 
-/* Reglas de impresión para Zebra ZC300 a doble cara */
+/* Reglas de impresión para Zebra ZC300 a doble cara (sin marcas de agua ni bordes externos) */
 @media print {
+  @page {
+    size: 55mm 86.5mm;
+    margin: 0mm !important;
+  }
   html, body {
     margin: 0 !important;
     padding: 0 !important;
     width: 55mm !important;
-    background: #fff !important;
+    height: 86.5mm !important;
+    background: #ffffff !important;
   }
-  .no-print, .panel, .stage-header, .card-block .lbl, nav, header {
+  /* Ocultar absolutamente todo el entorno de la aplicación y elementos ajenos */
+  body * {
+    visibility: hidden !important;
+  }
+  .print-only-container,
+  .print-only-container * {
+    visibility: visible !important;
+  }
+  .no-print, .panel, .stage-header, .card-block .lbl, nav, header, button, [role="button"], [class*="watermark"], [class*="banner"] {
     display: none !important;
+    visibility: hidden !important;
   }
   .print-only-container {
     display: block !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 55mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 999999 !important;
+    background: #ffffff !important;
   }
   .card-block {
     display: block !important;
@@ -708,6 +729,8 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .card-block:last-child {
     page-break-after: auto !important;
@@ -719,13 +742,10 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
     width: 55mm !important;
     height: 86.5mm !important;
     margin: 0 !important;
+    padding: 0 !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-  @page {
-    size: 55mm 86.5mm;
-    margin: 0;
   }
 }
