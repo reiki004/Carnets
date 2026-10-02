@@ -39,6 +39,7 @@ interface ScreenClubProps {
   selectedClubId: string;
   setSelectedClubId: (id: string) => void;
   onOpenCardModal: (card: CardState) => void;
+  onBatchPrint?: (cards: CardState[]) => Promise<void>;
 }
 
 export const ScreenClub: React.FC<ScreenClubProps> = ({
@@ -49,11 +50,16 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
   selectedClubId,
   setSelectedClubId,
   onOpenCardModal,
+  onBatchPrint,
 }) => {
   const [jugadores, setJugadores] = useState<Jugador[]>([]);
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [textoFiltro, setTextoFiltro] = useState('');
   const [loadingList, setLoadingList] = useState(false);
+
+  // Jugadores seleccionados con checkbox para impresión por lotes
+  const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+  const [isPrintingSelected, setIsPrintingSelected] = useState(false);
 
   // Pestaña derecha activa: 'form' | 'excel' | 'fotos'
   const [activeTabRight, setActiveTabRight] = useState<'form' | 'excel' | 'fotos'>('form');
@@ -294,31 +300,61 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     onOpenCardModal(card);
   };
 
+  const handleToggleSelect = (docNum: string) => {
+    setSelectedDocs((prev) =>
+      prev.includes(docNum) ? prev.filter((d) => d !== docNum) : [...prev, docNum]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    const allFilteredDocs = filteredJugadores.map((j) => j.NumeroDocumento);
+    const allSelected = allFilteredDocs.length > 0 && allFilteredDocs.every((d) => selectedDocs.includes(d));
+    if (allSelected) {
+      setSelectedDocs((prev) => prev.filter((d) => !allFilteredDocs.includes(d)));
+    } else {
+      setSelectedDocs((prev) => Array.from(new Set([...prev, ...allFilteredDocs])));
+    }
+  };
+
   const handlePrintSelected = async () => {
-    const checks = Array.from(document.querySelectorAll<HTMLInputElement>('.jugChk:checked'));
-    if (!checks.length) {
-      alert('Marca al menos un jugador de la lista con su casilla.');
+    if (isPrintingSelected) return;
+
+    // Obtener documentos seleccionados: desde el estado de React o desde los checkboxes marcados en el DOM
+    const domChecked = Array.from(document.querySelectorAll<HTMLInputElement>('.jugChk:checked'))
+      .map((chk) => (chk.value && chk.value !== 'on' ? chk.value : chk.getAttribute('data-doc') || chk.dataset.doc || ''))
+      .filter(Boolean);
+
+    const docs = Array.from(new Set([...selectedDocs, ...domChecked]));
+
+    if (!docs.length) {
+      alert('Marca al menos un jugador de la lista con su casilla de verificación.');
       return;
     }
 
-    if (checks.length > 1) {
-      const selectedCards = checks
-        .map((chk) => {
-          const jug = jugadores.find((j: Jugador) => j.NumeroDocumento === chk.value);
-          return jug ? generarCardState(jug) : null;
-        })
-        .filter(Boolean) as CardState[];
+    const selectedCards = docs
+      .map((docNum) => {
+        const jug = jugadores.find((j: Jugador) => j.NumeroDocumento === docNum);
+        return jug ? generarCardState(jug) : null;
+      })
+      .filter(Boolean) as CardState[];
 
-      if (selectedCards.length > 0) {
-        await printMultipleCardsDirectly(selectedCards);
-        return;
-      }
+    if (!selectedCards.length) {
+      alert('No se encontraron datos para los jugadores seleccionados.');
+      return;
     }
 
-    const docNum = checks[0].value;
-    const jug = jugadores.find((j: Jugador) => j.NumeroDocumento === docNum);
-    if (jug) {
-      onOpenCardModal(generarCardState(jug));
+    try {
+      setIsPrintingSelected(true);
+      if (onBatchPrint) {
+        await onBatchPrint(selectedCards);
+      } else {
+        await printMultipleCardsDirectly(selectedCards);
+      }
+    } catch (err) {
+      console.error('Error al imprimir seleccionados:', err);
+      alert('Ocurrió un error al preparar la impresión: ' + String(err));
+    } finally {
+      setIsPrintingSelected(false);
     }
   };
 
@@ -651,9 +687,18 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
             {filteredJugadores.length > 0 && (
               <button
                 onClick={handlePrintSelected}
-                className="file-btn text-xs font-bold py-1 px-2.5 bg-[#e11d2e] hover:bg-[#c81926] text-white border-none"
+                disabled={isPrintingSelected}
+                className="file-btn text-xs font-bold py-1.5 px-3 bg-[#18181b] hover:bg-black text-white border border-[#27272a] rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                title="Imprimir carnets de los jugadores seleccionados"
               >
-                <Printer className="w-3 h-3 text-white" /> Imprimir seleccionados
+                <Printer className="w-3.5 h-3.5 text-white" />
+                <span>
+                  {isPrintingSelected
+                    ? 'Preparando impresión…'
+                    : selectedDocs.length > 0
+                    ? `Imprimir seleccionados (${selectedDocs.length})`
+                    : 'Imprimir seleccionados'}
+                </span>
               </button>
             )}
           </div>
@@ -678,7 +723,18 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                 <thead>
                   <tr>
                     <th style={{ width: '32px', textAlign: 'center' }}>#</th>
-                    <th style={{ width: '28px' }}></th>
+                    <th style={{ width: '28px', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        className="cursor-pointer"
+                        checked={
+                          filteredJugadores.length > 0 &&
+                          filteredJugadores.every((j) => selectedDocs.includes(j.NumeroDocumento))
+                        }
+                        onChange={handleToggleSelectAll}
+                        title="Seleccionar / deseleccionar todos los jugadores de la lista"
+                      />
+                    </th>
                     <th style={{ width: '34px' }}></th>
                     <th>Jugador</th>
                     <th>Doc.</th>
@@ -692,11 +748,14 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                       <td className="text-center font-mono text-xs font-bold text-[#555552] dark:text-slate-400 select-none" style={{ width: '32px' }}>
                         {idx + 1}
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <input
                           type="checkbox"
                           className="jugChk cursor-pointer"
+                          value={j.NumeroDocumento}
                           data-doc={j.NumeroDocumento}
+                          checked={selectedDocs.includes(j.NumeroDocumento)}
+                          onChange={() => handleToggleSelect(j.NumeroDocumento)}
                         />
                       </td>
                       <td>

@@ -3,14 +3,15 @@ import { CardState } from './CardPreview';
 import { DEFAULTS } from '../assets/cardAssets';
 
 interface PrintContainerProps {
-  card: CardState;
+  card?: CardState | null;
+  cards?: CardState[] | null;
 }
 
-export const PrintContainer: React.FC<PrintContainerProps> = ({ card }) => {
+const renderSingleCard = (card: CardState, keyPrefix = 'card') => {
   const isAdmin = card.tipo === 'admin';
 
   return (
-    <div className="print-only-container hidden print:block">
+    <React.Fragment key={keyPrefix}>
       {/* PÁGINA 1: FRENTE DE LA TARJETA (CR-80 EXACTO 55x86.5mm) */}
       <div className="card-block">
         <div className="card card-front" style={{ width: '55mm', height: '86.5mm' }}>
@@ -109,6 +110,17 @@ export const PrintContainer: React.FC<PrintContainerProps> = ({ card }) => {
           />
         </div>
       </div>
+    </React.Fragment>
+  );
+};
+
+export const PrintContainer: React.FC<PrintContainerProps> = ({ card, cards }) => {
+  const cardsToPrint = cards && cards.length > 0 ? cards : card ? [card] : [];
+  if (!cardsToPrint.length) return null;
+
+  return (
+    <div className="print-only-container hidden print:block">
+      {cardsToPrint.map((c, idx) => renderSingleCard(c, `print-card-${idx}-${c.dni}`))}
     </div>
   );
 };

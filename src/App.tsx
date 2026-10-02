@@ -12,7 +12,7 @@ import { DEFAULTS } from './assets/cardAssets';
 import { CardState, DEFAULT_CARD_STATE } from './components/CardPreview';
 import { CardModal } from './components/CardModal';
 import { PrintContainer } from './components/PrintContainer';
-import { printCardDirectly } from './utils/printHelpers';
+import { printCardDirectly, printMultipleCardsDirectly } from './utils/printHelpers';
 import { ScreenInicio } from './components/ScreenInicio';
 import { ScreenBuscar } from './components/ScreenBuscar';
 import { ScreenClub } from './components/ScreenClub';
@@ -42,10 +42,16 @@ export default function App() {
 
   // Estado del carnet para modal emergente y para impresión
   const [modalCard, setModalCard] = useState<CardState>(DEFAULT_CARD_STATE);
+  const [batchPrintCards, setBatchPrintCards] = useState<CardState[] | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Modal Guía Zebra ZC300
   const [showZebraModal, setShowZebraModal] = useState(false);
+
+  const handleBatchPrint = async (cards: CardState[]) => {
+    setBatchPrintCards(cards);
+    await printMultipleCardsDirectly(cards);
+  };
 
   // Carga de datos de Supabase
   const refreshClubes = async () => {
@@ -287,6 +293,7 @@ export default function App() {
             selectedClubId={selectedClubId}
             setSelectedClubId={setSelectedClubId}
             onOpenCardModal={handleOpenCardModal}
+            onBatchPrint={handleBatchPrint}
           />
         )}
 
@@ -376,7 +383,7 @@ export default function App() {
       )}
 
       {/* 5. CONTENEDOR EXCLUSIVO PARA IMPRESIÓN (SOLO VISIBLE EN @media print) */}
-      <PrintContainer card={modalCard} />
+      <PrintContainer card={modalCard} cards={batchPrintCards} />
     </div>
   );
 }

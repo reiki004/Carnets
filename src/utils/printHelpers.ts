@@ -400,8 +400,8 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
     iframe.style.position = 'fixed';
     iframe.style.top = '-9999px';
     iframe.style.left = '-9999px';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
+    iframe.style.width = '100mm';
+    iframe.style.height = '150mm';
     iframe.style.border = 'none';
     document.body.appendChild(iframe);
 
