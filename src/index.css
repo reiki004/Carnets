@@ -32,6 +32,86 @@ body {
   padding: 0;
 }
 
+.dark body {
+  background: #141416;
+  color: #f4f4f5;
+}
+
+.dark .stat-card,
+.dark .quick-btn,
+.dark .pie-item,
+.dark .mini-panel {
+  background: #1e1e21 !important;
+  border-color: #2e2e33 !important;
+  color: #f4f4f5 !important;
+}
+
+.dark .stat-card .num,
+.dark .pie-item .pie-name,
+.dark .mini-panel summary {
+  color: #f4f4f5 !important;
+}
+
+.dark .stat-card .lbl,
+.dark .quick-btn small,
+.dark .search-result-card .info span {
+  color: #a1a1aa !important;
+}
+
+.dark .search-result-card {
+  background: #1e1e21 !important;
+  border-color: #2e2e33 !important;
+}
+
+.dark .search-result-card .info b {
+  color: #f4f4f5 !important;
+}
+
+.dark .jug-table {
+  background: #1e1e21 !important;
+}
+
+.dark .jug-table th {
+  background: #27272a !important;
+  color: #f4f4f5 !important;
+  border-bottom-color: #3f3f46 !important;
+}
+
+.dark .jug-table td {
+  background: #1e1e21 !important;
+  border-top-color: #2e2e33 !important;
+  color: #f4f4f5 !important;
+}
+
+.dark .jug-table td b {
+  color: #ffffff !important;
+}
+
+.dark .jug-table td span {
+  color: #a1a1aa !important;
+}
+
+.dark input[type=text],
+.dark input[type=date],
+.dark select {
+  background: #1e1e21 !important;
+  border-color: #3f3f46 !important;
+  color: #f4f4f5 !important;
+}
+
+.dark .file-btn.alt,
+.dark .pie-item .pie-btn,
+.dark .club-cat-opt {
+  background: #27272a !important;
+  border-color: #3f3f46 !important;
+  color: #f4f4f5 !important;
+}
+
+.dark .import-preview {
+  background: #1e1e21 !important;
+  border-color: #2e2e33 !important;
+}
+
 .names-font, .field-font {
   font-family: 'Arial Narrow', 'Arimo Narrow', Arial, sans-serif;
   font-weight: 700;

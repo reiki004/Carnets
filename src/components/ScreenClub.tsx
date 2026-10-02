@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import {
   sb,
@@ -28,6 +28,7 @@ import {
   Check,
   Eye,
   CheckSquare,
+  Shield,
 } from 'lucide-react';
 
 interface ScreenClubProps {
@@ -100,6 +101,15 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/.test(str.trim()) && str.trim().length > 0;
   }
 
+  // Ordenar siempre la lista en orden alfabético de Apellidos y Nombres
+  const ordenarJugadores = (list: Jugador[]): Jugador[] => {
+    return [...list].sort((a, b) => {
+      const apA = (a.Apellidos || '').trim().localeCompare((b.Apellidos || '').trim(), 'es', { sensitivity: 'base' });
+      if (apA !== 0) return apA;
+      return (a.Nombres || '').trim().localeCompare((b.Nombres || '').trim(), 'es', { sensitivity: 'base' });
+    });
+  };
+
   // Cargar jugadores del club seleccionado
   const loadJugadores = async () => {
     if (!selectedClubId) {
@@ -108,13 +118,14 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     }
     setLoadingList(true);
     try {
-      let query = sb.from('jugadores').select('*').eq('club_id', selectedClubId);
+      let query = sb.from('jugadores').select('*').eq('club_id', selectedClubId).order('apellidos').order('nombres');
       if (categoriaFiltro) {
         query = query.eq('categoria', categoriaFiltro);
       }
       const { data, error } = await query;
       if (error) throw error;
-      setJugadores((data || []).map(jugadorRowToJs));
+      const list = (data || []).map(jugadorRowToJs);
+      setJugadores(ordenarJugadores(list));
     } catch (err: any) {
       console.error('Error cargando jugadores:', err);
     } finally {
@@ -522,43 +533,67 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     if (selectedClubId) loadJugadores();
   };
 
-  const filteredJugadores = jugadores.filter((j) => {
-    if (!textoFiltro) return true;
-    const q = textoFiltro.toLowerCase();
-    return (
-      j.Apellidos.toLowerCase().includes(q) ||
-      j.Nombres.toLowerCase().includes(q) ||
-      j.NumeroDocumento.includes(q)
-    );
-  });
+  const filteredJugadores = useMemo(() => {
+    const list = jugadores.filter((j) => {
+      if (!textoFiltro) return true;
+      const q = textoFiltro.toLowerCase().trim();
+      return (
+        (j.Apellidos || '').toLowerCase().includes(q) ||
+        (j.Nombres || '').toLowerCase().includes(q) ||
+        (j.NumeroDocumento || '').includes(q)
+      );
+    });
+    return ordenarJugadores(list);
+  }, [jugadores, textoFiltro]);
+
+  const selectedClub = clubes.find((c) => c.ClubID === selectedClubId);
 
   return (
     <div className="space-y-4">
       {/* Barra superior: Selector de Club & Filtros (Div principal #f4f4f2) */}
-      <div className="bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-[260px]">
-          <span className="text-xs font-bold text-[#1a1a1a] whitespace-nowrap">
-            Club:
-          </span>
-          <select
-            value={selectedClubId}
-            onChange={(e) => setSelectedClubId(e.target.value)}
-            className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8]"
-          >
-            <option value="">— Selecciona un club —</option>
-            {clubes.map((c) => (
-              <option key={c.ClubID} value={c.ClubID}>
-                {c.NombreClub}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => refreshClubes()}
-            className="file-btn alt text-xs p-2"
-            title="Refrescar clubes"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+      <div
+        style={{ backgroundColor: '#f4f4f2', borderColor: '#dcdcd8' }}
+        className="bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3"
+      >
+        <div className="flex items-center gap-2.5 flex-1 min-w-[280px]">
+          {/* Logo del club al lado izquierdo del nombre */}
+          {selectedClub?.LogoArchivo ? (
+            <img
+              src={selectedClub.LogoArchivo}
+              alt={selectedClub.NombreClub}
+              className="w-9 h-9 rounded-lg object-contain bg-white border border-[#dcdcd8] p-0.5 shadow-xs shrink-0"
+              title={selectedClub.NombreClub}
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-lg bg-white dark:bg-[#1e1e21] border border-[#dcdcd8] dark:border-[#2e2e33] flex items-center justify-center text-[#e11d2e] shrink-0 shadow-xs">
+              <Shield className="w-4 h-4" />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-xs font-bold text-[#1a1a1a] dark:text-[#f4f4f5] whitespace-nowrap">
+              Club:
+            </span>
+            <select
+              value={selectedClubId}
+              onChange={(e) => setSelectedClubId(e.target.value)}
+              className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8]"
+            >
+              <option value="">— Selecciona un club —</option>
+              {clubes.map((c) => (
+                <option key={c.ClubID} value={c.ClubID}>
+                  {c.NombreClub}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => refreshClubes()}
+              className="file-btn alt text-xs p-2"
+              title="Refrescar clubes"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -593,11 +628,25 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       {/* Distribución equilibrada en 2 Columnas (evita ventanas largas) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* COLUMNA 1 (IZQUIERDA - 7 COLS): TABLA DE JUGADORES (Div principal #f4f4f2) */}
-        <div className="lg:col-span-7 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-2">
-              <span>Jugadores del Club ({filteredJugadores.length})</span>
-            </h2>
+        <div
+          style={{ backgroundColor: '#f4f4f2', borderColor: '#dcdcd8' }}
+          className="lg:col-span-7 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3"
+        >
+          <div className="flex items-center justify-between border-b border-[#dcdcd8] dark:border-[#2e2e33] pb-2">
+            <div className="flex items-center gap-2">
+              {selectedClub?.LogoArchivo && (
+                <img
+                  src={selectedClub.LogoArchivo}
+                  alt=""
+                  className="w-6 h-6 rounded object-contain bg-white border border-[#dcdcd8] p-0.5"
+                />
+              )}
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-1.5">
+                <span style={{ color: '#000000' }} className="text-[#000000]">
+                  {selectedClub ? selectedClub.NombreClub : 'Jugadores del Club'} ({filteredJugadores.length})
+                </span>
+              </h2>
+            </div>
 
             {filteredJugadores.length > 0 && (
               <button
@@ -628,6 +677,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               <table className="jug-table m-0">
                 <thead>
                   <tr>
+                    <th style={{ width: '32px', textAlign: 'center' }}>#</th>
                     <th style={{ width: '28px' }}></th>
                     <th style={{ width: '34px' }}></th>
                     <th>Jugador</th>
@@ -637,8 +687,11 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredJugadores.map((j) => (
+                  {filteredJugadores.map((j, idx) => (
                     <tr key={j.NumeroDocumento}>
+                      <td className="text-center font-mono text-xs font-bold text-[#555552] dark:text-slate-400 select-none" style={{ width: '32px' }}>
+                        {idx + 1}
+                      </td>
                       <td>
                         <input
                           type="checkbox"
@@ -702,15 +755,18 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
         </div>
 
         {/* COLUMNA 2 (DERECHA - 5 COLS): PANELES EN PESTAÑAS (Div principal #f4f4f2) */}
-        <div className="lg:col-span-5 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-4">
+        <div
+          style={{ backgroundColor: '#f4f4f2', borderColor: '#dcdcd8' }}
+          className="lg:col-span-5 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-4"
+        >
           {/* Navegación por pestañas para no hacer la ventana larga */}
-          <div className="flex border-b border-[#dcdcd8] pb-1 gap-1">
+          <div className="flex border-b border-[#dcdcd8] dark:border-[#2e2e33] pb-1 gap-1">
             <button
               onClick={() => setActiveTabRight('form')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 activeTabRight === 'form'
                   ? 'bg-[#e11d2e] text-white'
-                  : 'text-[#555552] hover:bg-[#e9e9e6] hover:text-[#1a1a1a]'
+                  : 'text-[#555552] dark:text-slate-400 hover:bg-[#e9e9e6] dark:hover:bg-[#2e2e33] hover:text-[#1a1a1a] dark:hover:text-white'
               }`}
             >
               {editingJugador ? '✎ Editar' : '＋ Nuevo'}
@@ -720,7 +776,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 activeTabRight === 'excel'
                   ? 'bg-[#e11d2e] text-white'
-                  : 'text-[#555552] hover:bg-[#e9e9e6] hover:text-[#1a1a1a]'
+                  : 'text-[#555552] dark:text-slate-400 hover:bg-[#e9e9e6] dark:hover:bg-[#2e2e33] hover:text-[#1a1a1a] dark:hover:text-white'
               }`}
             >
               📥 Importar Excel
@@ -730,10 +786,10 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 activeTabRight === 'fotos'
                   ? 'bg-[#e11d2e] text-white'
-                  : 'text-[#555552] hover:bg-[#e9e9e6] hover:text-[#1a1a1a]'
+                  : 'text-[#555552] dark:text-slate-400 hover:bg-[#e9e9e6] dark:hover:bg-[#2e2e33] hover:text-[#1a1a1a] dark:hover:text-white'
               }`}
             >
-              📁 Fotos Carpeta
+              📷 Subir Fotos
             </button>
           </div>
 
@@ -987,7 +1043,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                   onChange={(e) => setFotosMasivasTipo(e.target.value as any)}
                 >
                   <option value="jugadores">Jugadores</option>
-                  <option value="administrativos">Administrativos</option>
+                  <option value="administrativos">Árbitros</option>
                 </select>
               </div>
 

@@ -75,15 +75,12 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
   const [isPrinting, setIsPrinting] = useState(false);
 
   const handlePrint = async () => {
+    if (isPrinting) return;
     try {
       setIsPrinting(true);
       await printCardDirectly(card, frontRef.current, backRef.current);
-      if (onPrint) {
-        onPrint();
-      }
     } catch (err) {
       console.error('Error al imprimir directamente:', err);
-      window.print();
     } finally {
       setIsPrinting(false);
     }
@@ -138,15 +135,15 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
       <div className="w-full max-w-3xl flex items-center justify-between no-print px-1 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {isAdmin ? (
-            <span className="text-[11px] font-bold uppercase tracking-wider bg-black/10 text-[#1a1a1a] border border-black/20 px-2.5 py-0.5 rounded-full">
-              Personal Administrativo
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-black/10 dark:bg-white/10 text-[#1a1a1a] dark:text-white border border-black/20 dark:border-white/20 px-2.5 py-0.5 rounded-full">
+              Árbitro
             </span>
           ) : (
             <span className="text-[11px] font-bold uppercase tracking-wider bg-[#e11d2e]/10 text-[#e11d2e] border border-[#e11d2e]/30 px-2.5 py-0.5 rounded-full">
               Jugador / Socio
             </span>
           )}
-          <span className="text-xs font-bold text-[#555552]">
+          <span className="text-xs font-bold text-[#555552] dark:text-slate-400">
             CR-80 · 55 × 86.5 mm
           </span>
         </div>
@@ -267,7 +264,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                   {card.clubname
                     ? card.clubname.toUpperCase()
                     : isAdmin
-                    ? 'DIRECTIVO'
+                    ? 'ÁRBITRO'
                     : 'NOMBRE DEL CLUB'}
                 </div>
               </div>

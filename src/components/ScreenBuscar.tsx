@@ -72,7 +72,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
       return;
     }
     const qNorm = normalizarTexto(qRaw);
-    setStatus({ msg: 'Buscando en jugadores y administrativos…', kind: 'loading' });
+    setStatus({ msg: 'Buscando en jugadores y árbitros…', kind: 'loading' });
 
     try {
       const [jugRes, admRes] = await Promise.all([
@@ -181,20 +181,20 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
     <div className="space-y-6">
       {/* Buscador superior (Div principal #f4f4f2) */}
       <div className="bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs">
-        <label className="text-xs font-bold text-[#1a1a1a] mb-1.5 block">
+        <label className="text-xs font-bold text-[#1a1a1a] dark:text-[#f4f4f5] mb-1.5 block">
           Documento (DNI/CE), Apellidos o Nombres
         </label>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-[#555552] absolute left-3 top-2.5" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
               placeholder="Ej. 07557840 o Flores..."
-              className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-[#dcdcd8] rounded-lg text-[#1a1a1a] focus:outline-none focus:border-[#e11d2e]"
+              className="w-full pl-3.5 pr-10 py-2 text-xs bg-white dark:bg-[#1e1e21] border border-[#dcdcd8] dark:border-[#2e2e33] rounded-lg text-[#1a1a1a] dark:text-white focus:outline-none focus:border-[#e11d2e]"
             />
+            <Search className="w-4 h-4 text-[#555552] dark:text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
           </div>
           <button
             onClick={handleBuscar}
@@ -269,11 +269,11 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
                   >
                     <img src={foto} className="w-10 h-10 rounded-lg object-cover" alt="" />
                     <div className="info">
-                      <b className="text-[#1a1a1a] font-extrabold flex items-center gap-1.5 text-xs">
+                      <b className="text-[#1a1a1a] dark:text-white font-extrabold flex items-center gap-1.5 text-xs">
                         {isJugador ? (
                           <span className="tipo-badge jugador">Jugador</span>
                         ) : (
-                          <span className="tipo-badge admin">Administrativo</span>
+                          <span className="tipo-badge admin">Árbitro</span>
                         )}
                         {r.Apellidos || ''} {r.Nombres || ''}
                       </b>

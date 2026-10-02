@@ -34,7 +34,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
   const [numDoc, setNumDoc] = useState('');
   const [apellidos, setApellidos] = useState('');
   const [nombres, setNombres] = useState('');
-  const [cargo, setCargo] = useState(cargosCache[0]?.cargo || 'DIRECTIVO');
+  const [cargo, setCargo] = useState(cargosCache[0]?.cargo || 'ÁRBITRO');
   const [fnac, setFnac] = useState('');
   const [fotoName, setFotoName] = useState('ninguna');
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       tipo: 'admin',
       apellidos: adm.Apellidos || 'APELLIDO',
       nombres: adm.Nombres || 'NOMBRE',
-      clubname: adm.ClubCargo || 'DIRECTIVO',
+      clubname: adm.ClubCargo || 'ÁRBITRO',
       photoUrl: adm.FotoArchivo || DEFAULTS.photo,
       photoScale: 100,
       photoOffsetX: 0,
@@ -76,7 +76,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     setNumDoc(adm.NumeroDocumento || '');
     setApellidos(adm.Apellidos || '');
     setNombres(adm.Nombres || '');
-    setCargo(adm.ClubCargo || (cargosCache[0]?.cargo || 'DIRECTIVO'));
+    setCargo(adm.ClubCargo || (cargosCache[0]?.cargo || 'ÁRBITRO'));
     setFnac(isoADmy(adm.FechaNacimiento));
     setFotoName(adm.FotoArchivo ? 'foto actual (sin cambios)' : 'ninguna');
     setFotoBase64(null);
@@ -90,7 +90,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       setStatus({ msg: 'Escribe un documento o apellido para buscar.', kind: 'err' });
       return;
     }
-    setStatus({ msg: 'Buscando en administrativos…', kind: 'loading' });
+    setStatus({ msg: 'Buscando en árbitros…', kind: 'loading' });
     try {
       const { data, error } = await sb
         .from('administrativos')
@@ -189,7 +189,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       const { error } = await sb.from('administrativos').upsert(adminJsToRow(data));
       if (error) throw error;
 
-      setStatus({ msg: '¡Administrativo guardado exitosamente!', kind: 'ok' });
+      setStatus({ msg: '¡Árbitro guardado exitosamente!', kind: 'ok' });
       handleNuevo();
     } catch (err: any) {
       setStatus({ msg: 'Error al guardar: ' + err.message, kind: 'err' });
@@ -200,12 +200,12 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     <div className="space-y-4">
       {/* Distribución equilibrada en 2 columnas (evita ventana larga) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Columna Izquierda (6 cols): Buscador y Lista de Administrativos (Div principal #f4f4f2) */}
+        {/* Columna Izquierda (6 cols): Buscador y Lista de Árbitros (Div principal #f4f4f2) */}
         <div className="lg:col-span-6 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3">
           <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-1.5">
               <Briefcase className="w-4 h-4 text-[#e11d2e]" />
-              Directorio Administrativo
+              Directorio de Árbitros
             </h2>
             <button
               onClick={handleNuevo}
@@ -216,7 +216,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           </div>
 
           <label className="text-xs font-bold text-[#1a1a1a] block">
-            Buscar (DNI o apellidos)
+            Buscar árbitro (DNI o apellidos)
           </label>
           <div className="file-row">
             <input
@@ -269,8 +269,8 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">
               {editingAdmin
-                ? `✎ Editando: ${editingAdmin.Apellidos} ${editingAdmin.Nombres}`
-                : '＋ Registrar Administrativo'}
+                ? `✎ Editando Árbitro: ${editingAdmin.Apellidos} ${editingAdmin.Nombres}`
+                : '＋ Registrar Árbitro'}
             </h2>
           </div>
 

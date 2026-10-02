@@ -18,31 +18,18 @@ import { ScreenBuscar } from './components/ScreenBuscar';
 import { ScreenClub } from './components/ScreenClub';
 import { ScreenAdmin } from './components/ScreenAdmin';
 import { ScreenConfig } from './components/ScreenConfig';
-import { Printer, HelpCircle, Sun, Moon, Sparkles, Layers } from 'lucide-react';
+import { HelpCircle, Layers, Printer } from 'lucide-react';
 
 export default function App() {
   // Pestañas activas: exactamente 5 pantallas
   const [activeScreen, setActiveScreen] = useState<'inicio' | 'buscar' | 'club' | 'admin' | 'config'>('inicio');
 
-  // Modo Claro / Oscuro (predeterminado Claro como solicitado por el usuario)
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('interclubes_theme');
-      if (saved) return saved === 'dark';
-    }
-    return false;
-  });
-
+  // Asegurar tema de colores claro en toda la aplicación, con encabezado y menú en tema oscuro
   useEffect(() => {
     const root = document.documentElement;
-    if (isDarkMode) {
-      root.classList.add('dark');
-      localStorage.setItem('interclubes_theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('interclubes_theme', 'light');
-    }
-  }, [isDarkMode]);
+    root.classList.remove('dark');
+    localStorage.removeItem('interclubes_theme');
+  }, []);
 
   // Estados cargados desde Supabase
   const [clubes, setClubes] = useState<Club[]>([]);
@@ -138,10 +125,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#e9e9e6] text-[#1a1a1a] flex flex-col font-sans transition-colors duration-200">
-      {/* 1. BARRA SUPERIOR DE NAVEGACIÓN (DIV ENCABEZADO #e11d2e CON TEXTOS #ffffff) */}
-      <header className="screen-nav no-print sticky top-0 z-40 bg-[#e11d2e] border-b border-[#c81926] shadow-sm px-4 py-2 flex items-center justify-between text-white">
+      {/* 1. BARRA SUPERIOR DE NAVEGACIÓN (DIV ENCABEZADO CON TEMA OSCURO Y MENÚ) */}
+      <header className="screen-nav no-print sticky top-0 z-40 bg-[#18181b] border-b border-[#27272a] shadow-md px-4 py-2.5 flex items-center justify-between text-white">
         <div className="flex items-center gap-3">
-          {/* Logo en la parte superior izquierda de la aplicación: Imagen del Encabezado */}
+          {/* Logo en la parte superior izquierda de la aplicación */}
           <div
             className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-102"
             onClick={() => irAPantalla('inicio')}
@@ -150,20 +137,20 @@ export default function App() {
             <img
               src={DEFAULTS.header}
               alt="INTER CLUBES"
-              className="h-10 w-auto rounded object-contain shadow-xs border border-white/30 bg-white"
+              className="h-10 w-auto rounded object-contain shadow-xs border border-white/20 bg-white"
             />
-            <span className="hidden md:inline-block ml-1 text-[10px] font-extrabold uppercase tracking-wider bg-black/25 text-white px-2 py-0.5 rounded-full border border-white/30">
+            <span className="hidden md:inline-block ml-1 text-[10px] font-extrabold uppercase tracking-wider bg-white/10 text-zinc-300 px-2 py-0.5 rounded-full border border-white/15">
               Zebra ZC300 CR-80
             </span>
           </div>
 
-          {/* Menú de 5 Pestañas con alto contraste */}
-          <div className="hidden sm:flex items-center gap-1 ml-3 bg-black/20 p-1 rounded-xl border border-white/20">
+          {/* Menú de 5 Pestañas en tema oscuro */}
+          <div className="hidden sm:flex items-center gap-1.5 ml-3 bg-[#09090b]/80 p-1 rounded-xl border border-white/10 shadow-inner">
             <button
               className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'inicio'
-                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
-                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
+                  ? 'bg-[#e11d2e] text-white shadow-sm font-black'
+                  : 'text-zinc-300 hover:text-white hover:bg-white/10 font-bold'
               }`}
               onClick={() => irAPantalla('inicio')}
             >
@@ -172,8 +159,8 @@ export default function App() {
             <button
               className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'buscar'
-                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
-                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
+                  ? 'bg-[#e11d2e] text-white shadow-sm font-black'
+                  : 'text-zinc-300 hover:text-white hover:bg-white/10 font-bold'
               }`}
               onClick={() => irAPantalla('buscar')}
             >
@@ -182,8 +169,8 @@ export default function App() {
             <button
               className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'club'
-                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
-                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
+                  ? 'bg-[#e11d2e] text-white shadow-sm font-black'
+                  : 'text-zinc-300 hover:text-white hover:bg-white/10 font-bold'
               }`}
               onClick={() => irAPantalla('club')}
             >
@@ -192,18 +179,18 @@ export default function App() {
             <button
               className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'admin'
-                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
-                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
+                  ? 'bg-[#e11d2e] text-white shadow-sm font-black'
+                  : 'text-zinc-300 hover:text-white hover:bg-white/10 font-bold'
               }`}
               onClick={() => irAPantalla('admin')}
             >
-              🧑‍💼 Admin.
+              ⚖️ Árbitros
             </button>
             <button
               className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 activeScreen === 'config'
-                  ? 'bg-white text-[#1a1a1a] shadow-xs font-black'
-                  : 'text-white/90 hover:text-white hover:bg-white/15 font-bold'
+                  ? 'bg-[#e11d2e] text-white shadow-sm font-black'
+                  : 'text-zinc-300 hover:text-white hover:bg-white/10 font-bold'
               }`}
               onClick={() => irAPantalla('config')}
             >
@@ -217,65 +204,52 @@ export default function App() {
           {/* Botón de Modelo Predeterminado */}
           <button
             onClick={() => handleOpenCardModal(DEFAULT_CARD_STATE)}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-black/20 hover:bg-black/30 border border-white/30 transition-colors cursor-pointer"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-200 bg-white/10 hover:bg-white/20 border border-white/15 transition-colors cursor-pointer"
             title="Ver o editar el modelo base de carnet"
           >
-            <Layers className="w-3.5 h-3.5 text-white" />
+            <Layers className="w-3.5 h-3.5 text-zinc-300" />
             <span>Modelo Base</span>
           </button>
 
           {/* Botón Guía Zebra ZC300 */}
           <button
             onClick={() => setShowZebraModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-black/20 hover:bg-black/30 border border-white/30 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-200 bg-white/10 hover:bg-white/20 border border-white/15 transition-colors cursor-pointer"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
+            <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
             <span className="hidden md:inline">Guía Zebra ZC300</span>
-          </button>
-
-          {/* Conmutador Modo Claro / Modo Oscuro */}
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="flex items-center gap-1.5 p-2 rounded-lg text-white bg-black/20 hover:bg-black/30 border border-white/30 transition-colors cursor-pointer"
-            title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          >
-            {isDarkMode ? (
-              <Sun className="w-4 h-4 text-amber-300 animate-spin-slow" />
-            ) : (
-              <Moon className="w-4 h-4 text-white" />
-            )}
           </button>
         </div>
       </header>
 
-      {/* Menú móvil */}
-      <div className="sm:hidden flex items-center justify-around bg-[#e11d2e] border-b border-[#c81926] py-1.5 no-print px-2 gap-1 text-white">
+      {/* Menú móvil en tema oscuro */}
+      <div className="sm:hidden flex items-center justify-around bg-[#18181b] border-b border-[#27272a] py-2 no-print px-2 gap-1 text-white">
         <button
-          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'inicio' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${activeScreen === 'inicio' ? 'bg-[#e11d2e] text-white font-extrabold' : 'text-zinc-300 hover:text-white'}`}
           onClick={() => irAPantalla('inicio')}
         >
           Inicio
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'buscar' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${activeScreen === 'buscar' ? 'bg-[#e11d2e] text-white font-extrabold' : 'text-zinc-300 hover:text-white'}`}
           onClick={() => irAPantalla('buscar')}
         >
           Buscar
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'club' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${activeScreen === 'club' ? 'bg-[#e11d2e] text-white font-extrabold' : 'text-zinc-300 hover:text-white'}`}
           onClick={() => irAPantalla('club')}
         >
           Club
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'admin' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${activeScreen === 'admin' ? 'bg-[#e11d2e] text-white font-extrabold' : 'text-zinc-300 hover:text-white'}`}
           onClick={() => irAPantalla('admin')}
         >
-          Admin.
+          Árbitros
         </button>
         <button
-          className={`px-2 py-1 text-xs font-bold rounded-md ${activeScreen === 'config' ? 'bg-white text-[#1a1a1a] font-extrabold' : 'text-white/80 hover:text-white'}`}
+          className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${activeScreen === 'config' ? 'bg-[#e11d2e] text-white font-extrabold' : 'text-zinc-300 hover:text-white'}`}
           onClick={() => irAPantalla('config')}
         >
           Config
@@ -346,41 +320,40 @@ export default function App() {
         onClose={() => setIsModalOpen(false)}
         card={modalCard}
         onUpdateCard={setModalCard}
-        onPrint={handlePrintCard}
       />
 
       {/* 4. MODAL GUÍA ZEBRA ZC300 */}
       {showZebraModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 no-print">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="bg-[#f4f4f2] border border-[#dcdcd8] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-3">
               <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-red-600 dark:text-red-400" />
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                <Printer className="w-5 h-5 text-[#e11d2e]" />
+                <h3 className="font-extrabold text-[#1a1a1a] text-base">
                   Impresión en Zebra ZC300 a Doble Cara
                 </h3>
               </div>
               <button
                 onClick={() => setShowZebraModal(false)}
-                className="text-slate-400 hover:text-black dark:hover:text-white font-bold p-1 rounded-lg"
+                className="text-[#555552] hover:text-[#1a1a1a] font-bold p-1 rounded-lg cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="text-xs text-slate-700 dark:text-slate-300 space-y-3 leading-relaxed">
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                <span className="font-bold text-red-600 dark:text-red-400 block mb-1">
+            <div className="text-xs text-[#1a1a1a] space-y-3 leading-relaxed">
+              <div className="bg-white p-3 rounded-lg border border-[#dcdcd8]">
+                <span className="font-bold text-[#e11d2e] block mb-1">
                   1. Medidas exactas CR-80
                 </span>
                 El tamaño de la tarjeta está calibrado a <strong>55 × 86.5 mm</strong>.
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1">
-                <span className="font-bold text-blue-600 dark:text-blue-400 block mb-1">
+              <div className="bg-white p-3 rounded-lg border border-[#dcdcd8] space-y-1">
+                <span className="font-bold text-[#1a1a1a] block mb-1">
                   2. Configuración en el diálogo del navegador:
                 </span>
-                <ul className="list-disc pl-4 space-y-1">
+                <ul className="list-disc pl-4 space-y-1 text-[#555552]">
                   <li>Selecciona la impresora <strong>Zebra ZC300</strong>.</li>
                   <li>Tamaño de papel: <strong>CR-80 (55 × 86.5 mm)</strong> o tarjeta estándar.</li>
                   <li>Márgenes: <strong>Ninguno (0 mm)</strong>.</li>
@@ -393,7 +366,7 @@ export default function App() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setShowZebraModal(false)}
-                className="file-btn text-xs font-bold px-4 py-2"
+                className="bg-[#e11d2e] hover:bg-[#c81926] text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-xs"
               >
                 Entendido
               </button>

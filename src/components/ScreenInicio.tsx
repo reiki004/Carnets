@@ -105,7 +105,7 @@ export const ScreenInicio: React.FC<ScreenInicioProps> = ({
             {stats.admin}
           </span>
           <span className="text-xs font-bold uppercase tracking-wider text-[#555552] flex items-center justify-center gap-1.5 mt-1">
-            <Briefcase className="w-3.5 h-3.5 text-[#e11d2e]" /> Administrativos
+            <Briefcase className="w-3.5 h-3.5 text-[#e11d2e]" /> Árbitros
           </span>
         </div>
 
@@ -165,11 +165,11 @@ export const ScreenInicio: React.FC<ScreenInicioProps> = ({
               <Briefcase className="w-5 h-5" />
             </div>
             <h3 className="text-sm font-bold text-[#1a1a1a] group-hover:text-[#e11d2e] flex items-center justify-between">
-              <span>Administrativos</span>
+              <span>Árbitros</span>
               <ChevronRight className="w-4 h-4 opacity-50" />
             </h3>
             <p className="text-xs text-[#555552] mt-1 leading-relaxed">
-              Carnets especializados sin logo central para directivos, staff y delegados.
+              Carnets especializados sin logo central para árbitros, jueces y colegiados.
             </p>
           </div>
 

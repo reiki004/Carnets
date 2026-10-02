@@ -147,7 +147,7 @@ export const printCardDirectly = async (
                   : ''
               }
               <div class="f-club-box">
-                <div class="f-clubname">${(card.clubname || (isAdmin ? 'DIRECTIVO' : 'NOMBRE DEL CLUB')).toUpperCase()}</div>
+                <div class="f-clubname">${(card.clubname || (isAdmin ? 'ÁRBITRO' : 'NOMBRE DEL CLUB')).toUpperCase()}</div>
               </div>
             </div>
             <img class="f-footer" src="${card.footerUrl || DEFAULTS.footer}" style="height: ${footerH}%;" alt="" />
@@ -435,7 +435,7 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
                   : ''
               }
               <div class="f-club-box">
-                <div class="f-clubname">${(c.clubname || (isAdmin ? 'DIRECTIVO' : 'NOMBRE DEL CLUB')).toUpperCase()}</div>
+                <div class="f-clubname">${(c.clubname || (isAdmin ? 'ÁRBITRO' : 'NOMBRE DEL CLUB')).toUpperCase()}</div>
               </div>
             </div>
             <img class="f-footer" src="${c.footerUrl || DEFAULTS.footer}" style="height: ${footerH}%;" alt="" />

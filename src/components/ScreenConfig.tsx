@@ -400,7 +400,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       {/* ================= SECCIÓN 4: CARGOS DE ADMINISTRATIVO & DISEÑO DE PIE ================= */}
       <div className="group m-0 p-0 border-b border-[#dcdcd8] pb-5">
         <span className="side-tag front flex items-center gap-1 w-max">
-          <Briefcase className="w-3.5 h-3.5" /> Cargos de administrativo · Diseño de pie
+          <Briefcase className="w-3.5 h-3.5" /> Cargos de árbitros · Diseño de pie
         </span>
         <div className="file-row mt-2">
           <input
@@ -408,7 +408,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
             value={nuevoCargo}
             onChange={(e) => setNuevoCargo(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleAddCargo()}
-            placeholder="Ej. DIRECTIVO"
+            placeholder="Ej. ÁRBITRO PRINCIPAL"
             className="flex-1"
           />
           <button onClick={handleAddCargo} className="file-btn alt text-xs">
@@ -416,7 +416,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           </button>
         </div>
         <div className="hint mt-1 mb-2 text-[#555552]">
-          Asigna una imagen de pie inferior para cada cargo administrativo.
+          Asigna una imagen de pie inferior para cada cargo arbitral.
         </div>
         <div className="space-y-2">
           {cargosCache.map((c) => (
@@ -488,7 +488,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
                 checked={cardState.tipo === 'admin'}
                 onChange={() => setCardState((prev) => ({ ...prev, tipo: 'admin' }))}
               />
-              Administrativo (sin logo, con cargo)
+              Árbitro (sin logo, con cargo)
             </label>
           </div>
 
@@ -518,7 +518,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
 
           <div>
             <label className="text-xs font-bold text-[#1a1a1a]">
-              {cardState.tipo === 'admin' ? 'Cargo' : 'Nombre del club'}
+              {cardState.tipo === 'admin' ? 'Cargo arbitral' : 'Nombre del club'}
             </label>
             <input
               type="text"
@@ -526,7 +526,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
               onChange={(e) =>
                 setCardState((prev) => ({ ...prev, clubname: e.target.value.toUpperCase() }))
               }
-              placeholder={cardState.tipo === 'admin' ? 'DIRECTIVO' : 'NOMBRE DEL CLUB'}
+              placeholder={cardState.tipo === 'admin' ? 'ÁRBITRO' : 'NOMBRE DEL CLUB'}
             />
           </div>
 
