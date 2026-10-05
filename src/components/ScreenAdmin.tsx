@@ -10,7 +10,7 @@ import { DEFAULTS } from '../assets/cardAssets';
 import { CardState } from './CardPreview';
 import { DateInput } from './DateInput';
 import { isoADmy, dmyAIso } from '../utils/dateHelpers';
-import { Search, Plus, Save, Upload, Eye, Briefcase } from 'lucide-react';
+import { Search, Plus, Save, Upload, Eye, Briefcase, Edit2, Trash2 } from 'lucide-react';
 
 interface ScreenAdminProps {
   cargosCache: any[];
@@ -65,6 +65,8 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       footerHeight: 20,
       fnac: isoADmy(adm.FechaNacimiento) || 'dd/mm/aaaa',
       dni: adm.NumeroDocumento || '00000000',
+      categoria: adm.Categoria || '',
+      showCategoria: false,
       backTopUrl: DEFAULTS.backtop,
       backBottomUrl: DEFAULTS.backbottom,
     };
@@ -122,6 +124,21 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     setFotoName('ninguna');
     setFotoBase64(null);
     setStatus({ msg: 'Formulario listo para nuevo registro.', kind: 'ok' });
+  };
+
+  const handleDeleteAdmin = async (doc: string, nom: string) => {
+    if (!window.confirm(`¿Estás seguro de eliminar a ${nom} (${doc})?`)) return;
+    try {
+      const { error } = await sb.from('administrativos').delete().eq('numero_documento', doc);
+      if (error) throw error;
+      setSearchResults((prev) => prev.filter((a) => a.NumeroDocumento !== doc));
+      if (editingAdmin?.NumeroDocumento === doc) {
+        handleNuevo();
+      }
+      setStatus({ msg: 'Árbitro/directivo eliminado exitosamente.', kind: 'ok' });
+    } catch (err: any) {
+      setStatus({ msg: 'Error al eliminar: ' + err.message, kind: 'err' });
+    }
   };
 
   const handleFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,13 +268,29 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => onOpenCardModal(generarCardStateAdmin(r))}
-                    className="p-1.5 text-[#e11d2e] hover:text-[#c81926] bg-[#f4f4f2] border border-[#dcdcd8] rounded-md"
-                    title="Ver carnet emergente / Imprimir"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => onOpenCardModal(generarCardStateAdmin(r))}
+                      className="p-1.5 text-emerald-600 hover:text-emerald-800 bg-[#f4f4f2] hover:bg-emerald-50 border border-[#dcdcd8] rounded-md transition-colors"
+                      title="Ver carnet emergente / Imprimir"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => cargarAdminEnFormulario(r)}
+                      className="p-1.5 text-blue-600 hover:text-blue-800 bg-[#f4f4f2] hover:bg-blue-50 border border-[#dcdcd8] rounded-md transition-colors"
+                      title="Editar datos"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAdmin(r.NumeroDocumento, `${r.Apellidos} ${r.Nombres}`)}
+                      className="p-1.5 text-red-600 hover:text-red-800 bg-[#f4f4f2] hover:bg-red-50 border border-[#dcdcd8] rounded-md transition-colors"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -369,6 +402,23 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
               onChange={handleFoto}
               className="hidden"
             />
+
+            {/* Miniatura de la foto luego de subir foto */}
+            {(fotoBase64 || editingAdmin?.FotoArchivo) && (
+              <div className="mt-2.5 flex items-center gap-3 p-2 bg-white rounded-lg border border-[#dcdcd8] shadow-2xs">
+                <img
+                  src={fotoBase64 ? `data:${fotoMime};base64,${fotoBase64}` : editingAdmin?.FotoArchivo || ''}
+                  alt="Miniatura"
+                  className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-[#1a1a1a] block truncate max-w-[200px]">{fotoName}</span>
+                  <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                    ✓ Fotografía lista
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="file-row pt-2">

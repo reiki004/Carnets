@@ -53,6 +53,8 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
     footerHeight: 20,
     fnac: 'dd/mm/aaaa',
     dni: '00000000',
+    categoria: '',
+    showCategoria: false,
     backTopUrl: DEFAULTS.backtop,
     backBottomUrl: DEFAULTS.backbottom,
   });
@@ -128,6 +130,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         (e) => String(e.estado).toUpperCase() === estNombre.toUpperCase()
       );
 
+      const catStr = [j.Categoria, j.Categoria2].filter(Boolean).join(' / ') || j.Categoria || '';
       const newCard: CardState = {
         tipo: 'socio',
         apellidos: j.Apellidos || 'APELLIDO',
@@ -144,6 +147,8 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         footerHeight: 20,
         fnac: isoADmy(j.FechaNacimiento) || 'dd/mm/aaaa',
         dni: j.NumeroDocumento || '00000000',
+        categoria: catStr,
+        showCategoria: previewCard.showCategoria ?? false,
         backTopUrl: DEFAULTS.backtop,
         backBottomUrl: DEFAULTS.backbottom,
       };
@@ -169,6 +174,8 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         footerHeight: 20,
         fnac: isoADmy(a.FechaNacimiento) || 'dd/mm/aaaa',
         dni: a.NumeroDocumento || '00000000',
+        categoria: a.Categoria || '',
+        showCategoria: previewCard.showCategoria ?? false,
         backTopUrl: DEFAULTS.backtop,
         backBottomUrl: DEFAULTS.backbottom,
       };
@@ -292,17 +299,40 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
 
         {/* Columna Derecha: Vista previa en vivo en la MISMA pantalla Buscar (Div principal #f4f4f2) */}
         <div className="lg:col-span-7 bg-[#f4f4f2] border border-[#dcdcd8] rounded-xl p-5 shadow-xs flex flex-col items-center">
-          <div className="w-full flex items-center justify-between border-b border-[#dcdcd8] pb-3 mb-4">
+          <div className="w-full flex items-center justify-between border-b border-[#dcdcd8] pb-3 mb-4 flex-wrap gap-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-1.5">
               <Eye className="w-4 h-4 text-[#e11d2e]" />
               Vista Previa en Vivo (Sin cambiar de pantalla)
             </h3>
-            <button
-              onClick={() => onOpenCardModal(previewCard)}
-              className="text-xs text-[#e11d2e] font-bold hover:underline"
-            >
-              Abrir en Pantalla Emergente
-            </button>
+
+            <div className="flex items-center gap-2">
+              <label
+                className="flex items-center gap-1.5 text-xs font-bold text-[#1a1a1a] cursor-pointer bg-white px-2.5 py-1.5 rounded-lg border border-[#dcdcd8] hover:border-[#1a1a1a] transition-all select-none shadow-2xs"
+                title="Marcar para que la categoría aparezca en el dorso sobre las redes sociales al imprimir el carnet"
+              >
+                <input
+                  type="checkbox"
+                  checked={previewCard.showCategoria ?? false}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setPreviewCard((prev) => {
+                      const updated = { ...prev, showCategoria: checked };
+                      onSelectCard?.(updated);
+                      return updated;
+                    });
+                  }}
+                  className="accent-[#e11d2e] w-4 h-4 rounded cursor-pointer"
+                />
+                <span>Imprimir categoría</span>
+              </label>
+
+              <button
+                onClick={() => onOpenCardModal(previewCard)}
+                className="text-xs text-[#e11d2e] font-bold hover:underline"
+              >
+                Abrir en Pantalla Emergente
+              </button>
+            </div>
           </div>
 
           {/* Componente CardPreview con niveladores interactivos */}
@@ -317,6 +347,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
             }}
             showPrintButton={true}
             showControls={true}
+            defaultScale="normal"
           />
         </div>
       </div>

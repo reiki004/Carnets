@@ -20,6 +20,7 @@ import {
   Trash2,
   CheckCircle,
   Database,
+  Save,
 } from 'lucide-react';
 
 interface ScreenConfigProps {
@@ -315,8 +316,8 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
         </div>
 
         <div className="file-row mt-4">
-          <button onClick={handleSaveClub} className="file-btn text-xs font-bold bg-[#e11d2e] hover:bg-[#c81926] text-white border-none">
-            ＋ Guardar club
+          <button onClick={handleSaveClub} className="file-btn text-xs font-bold bg-[#e11d2e] hover:bg-[#c81926] text-white border-none flex items-center gap-1.5">
+            <Save className="w-3.5 h-3.5" /> Guardar club
           </button>
           {selectedClubId && (
             <button

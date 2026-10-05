@@ -60,9 +60,6 @@ export default function App() {
       if (!error && data) {
         const list = data.map(clubRowToJs);
         setClubes(list);
-        if (!selectedClubId && list.length > 0) {
-          setSelectedClubId(list[0].ClubID);
-        }
       }
     } catch (err) {
       console.warn('Error al cargar clubes:', err);
@@ -132,7 +129,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#e9e9e6] text-[#1a1a1a] flex flex-col font-sans transition-colors duration-200">
       {/* 1. BARRA SUPERIOR DE NAVEGACIÓN (DIV ENCABEZADO CON TEMA OSCURO Y MENÚ) */}
-      <header className="screen-nav no-print sticky top-0 z-40 bg-[#18181b] border-b border-[#27272a] shadow-md px-4 py-2.5 flex items-center justify-between text-white">
+      <header
+        style={{ backgroundColor: '#000000' }}
+        className="screen-nav no-print sticky top-0 z-40 bg-[#000000] border-b border-[#27272a] shadow-md px-4 py-2.5 flex items-center justify-between text-white"
+      >
         <div className="flex items-center gap-3">
           {/* Logo en la parte superior izquierda de la aplicación */}
           <div
@@ -143,7 +143,8 @@ export default function App() {
             <img
               src={DEFAULTS.header}
               alt="INTER CLUBES"
-              className="h-10 w-auto rounded object-contain shadow-xs border border-white/20 bg-white"
+              style={{ borderColor: '#000000', borderWidth: '1px' }}
+              className="h-10 w-auto rounded object-contain shadow-xs border border-[#000000] bg-white"
             />
             <span className="hidden md:inline-block ml-1 text-[10px] font-extrabold uppercase tracking-wider bg-white/10 text-zinc-300 px-2 py-0.5 rounded-full border border-white/15">
               Zebra ZC300 CR-80
@@ -331,7 +332,10 @@ export default function App() {
 
       {/* 4. MODAL GUÍA ZEBRA ZC300 */}
       {showZebraModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 no-print">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(233, 233, 230, 0.75)' }}
+        >
           <div className="bg-[#f4f4f2] border border-[#dcdcd8] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-3">
               <div className="flex items-center gap-2">

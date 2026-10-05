@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Archivo+Narrow:wght@600;700;800;900&family=Caveat:wght@600;700&family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600;700;800&family=Montserrat:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Roboto+Condensed:wght@600;700;800;900&family=Roboto+Mono:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Archivo+Narrow:wght@600;700;800;900&family=Arimo:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Caveat:wght@600;700&family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600;700;800&family=Montserrat:ital,wght@0,700;0,800;0,900;1,800;1,900&family=Roboto:wght@400;500;700;900&family=Roboto+Condensed:wght@600;700;800;900&family=Roboto+Mono:wght@400;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -620,7 +620,7 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   display: block;
 }
 
-/* Cuerpo interior: Distribución vertical balanceada sin exceso de espacio en blanco */
+/* Cuerpo interior: Foto pegada arriba al encabezado y club pegado abajo al pie sin sobreposiciones */
 .card-front .f-body {
   flex: 1;
   min-height: 0;
@@ -628,23 +628,48 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-evenly;
-  padding: 6px 12px 6px 12px;
+  justify-content: space-between;
+  padding: 2px 8px 2px 8px;
   overflow: hidden;
   box-sizing: border-box;
 }
 
-/* Foto centrada arriba - Tamaño ampliado */
+/* Foto centrada arriba - Ajustada arriba al encabezado y tamaño ampliado */
 .card-front .f-photo-box {
-  width: 50%;
-  height: 36%;
-  max-height: 36%;
+  width: 62%;
+  height: 40%;
+  max-height: 42%;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   flex-shrink: 0;
-  background: #ffffff;
+  background: transparent;
+  margin-top: 0;
+}
+
+/* Árbitros: Foto y Nombres subidos con espacio vertical proporcional y Cargo mantenido al pie */
+.card-front.is-admin .f-body {
+  justify-content: flex-start;
+  padding: 6px 8px 3px 8px;
+}
+
+.card-front.is-admin .f-photo-box {
+  width: 65%;
+  height: 43%;
+  max-height: 45%;
+  margin-top: 4px;
+  margin-bottom: auto;
+}
+
+.card-front.is-admin .f-names-box {
+  margin-top: 0;
+  margin-bottom: auto;
+}
+
+.card-front.is-admin .f-club-box {
+  margin-top: 0;
+  margin-bottom: 2px;
 }
 
 .card-front .f-photo-img {
@@ -654,21 +679,23 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   transform-origin: center center;
 }
 
-/* Apellidos y Nombres centrados en color negro puro con fuente Arial Narrow */
+/* Apellidos y Nombres centrados en color negro puro con fuente Arial (+0.5 pt) */
 .card-front .f-names-box {
   width: 100%;
   text-align: center;
   line-height: 1.15;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  margin: 1px 0;
 }
 
 .card-front .f-apellidos,
 .card-front .f-nombres {
   color: #000000 !important;
-  font-family: 'Arial Narrow', 'Archivo Narrow', 'Roboto Condensed', 'Nimbus Sans Narrow', 'Liberation Sans Narrow', Arial, sans-serif !important;
-  font-stretch: condensed;
+  font-family: 'Arial', Helvetica, sans-serif !important;
   font-weight: 700;
-  font-size: 6.2cqw;
+  font-size: calc(6.2cqw + 0.5pt);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   margin: 0;
@@ -677,13 +704,13 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
 
 /* Logo / Escudo del club centrado - Tamaño ampliado */
 .card-front .f-logo-box {
-  width: 38%;
-  height: 26%;
-  max-height: 26%;
+  width: 48%;
+  height: 28%;
+  max-height: 30%;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   flex-shrink: 0;
 }
 
@@ -694,20 +721,22 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   transform-origin: center center;
 }
 
-/* Nombre del Club centrado en color negro puro con fuente Arial Narrow */
+/* Nombre del Club centrado en color negro puro con fuente Arial (+0.5 pt) */
 .card-front .f-club-box {
   width: 100%;
   text-align: center;
   line-height: 1.15;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 1px;
 }
 
 .card-front .f-clubname {
   color: #000000 !important;
-  font-family: 'Arial Narrow', 'Archivo Narrow', 'Roboto Condensed', 'Nimbus Sans Narrow', 'Liberation Sans Narrow', Arial, sans-serif !important;
-  font-stretch: condensed;
+  font-family: 'Arial', Helvetica, sans-serif !important;
   font-weight: 700;
-  font-size: 5.8cqw;
+  font-size: calc(5.8cqw + 0.5pt);
   letter-spacing: 0.015em;
   text-transform: uppercase;
 }
@@ -722,7 +751,7 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   margin-top: auto;
 }
 
-/* Dorso del Carnet con fuente Arial Narrow */
+/* Dorso del Carnet con tipografía Arial clásica */
 .card-back {
   width: 100%;
   height: 100%;
@@ -730,8 +759,9 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-family: 'Arial Narrow', 'Archivo Narrow', 'Roboto Condensed', 'Nimbus Sans Narrow', 'Liberation Sans Narrow', Arial, sans-serif;
-  font-stretch: condensed;
+  align-items: center;
+  font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
+  overflow: hidden;
 }
 
 .card-back .b-top {
@@ -751,19 +781,37 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
   gap: 12px;
 }
 
-.card-back .b-field {
+.card-back .b-field,
+.card-back .b-nac,
+.card-back .b-dni {
   color: #000000 !important;
-  font-family: 'Arial Narrow', 'Archivo Narrow', 'Roboto Condensed', 'Nimbus Sans Narrow', 'Liberation Sans Narrow', Arial, sans-serif !important;
-  font-stretch: condensed;
+  font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
   font-weight: 700;
-  font-size: 5.6cqw;
+  font-size: calc(5.6cqw + 1pt);
   text-align: center;
 }
 
+/* Categoría arriba de la imagen de redes sociales (-1 pt que F. Nacimiento) en Arial clásica */
+.card-back .b-categoria {
+  width: 100%;
+  text-align: center;
+  color: #000000 !important;
+  font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
+  font-weight: 700;
+  font-size: 5.6cqw;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-top: auto;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Redes sociales y web en la parte inferior */
 .card-back .b-bottom {
   width: 100%;
-  height: 28%;
-  object-fit: cover;
+  height: 27%;
+  object-fit: contain;
   flex-shrink: 0;
   display: block;
   margin-top: auto;
@@ -860,3 +908,10 @@ input[type=text]:focus, input[type=date]:focus, select:focus {
     print-color-adjust: exact !important;
   }
 }
+
+/* Ocultar badge de Netlify */
+.netlify-badge,
+[data-netlify-badge] {
+  display: none !important;
+}
+

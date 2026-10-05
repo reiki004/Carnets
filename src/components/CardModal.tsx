@@ -20,8 +20,11 @@ export const CardModal: React.FC<CardModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
-      <div className="bg-[#f4f4f2] dark:bg-[#1e1e21] border border-[#dcdcd8] dark:border-[#2e2e33] rounded-2xl max-w-5xl w-full p-6 shadow-2xl relative space-y-4 my-auto animate-in fade-in zoom-in-95">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto no-print backdrop-blur-sm"
+      style={{ backgroundColor: 'rgba(233, 233, 230, 0.75)' }}
+    >
+      <div className="bg-[#f4f4f2] border border-[#dcdcd8] rounded-2xl max-w-5xl w-full p-6 shadow-2xl relative space-y-4 my-auto animate-in fade-in zoom-in-95">
         {/* Cabecera del Modal (Div encabezado con texto blanco o rojo) */}
         <div className="flex items-center justify-between border-b border-[#dcdcd8] dark:border-[#2e2e33] pb-3">
           <div className="flex items-center gap-2">

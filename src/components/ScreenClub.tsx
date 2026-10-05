@@ -29,6 +29,7 @@ import {
   Eye,
   CheckSquare,
   Shield,
+  Save,
 } from 'lucide-react';
 
 interface ScreenClubProps {
@@ -60,6 +61,8 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
   // Jugadores seleccionados con checkbox para impresión por lotes
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [isPrintingSelected, setIsPrintingSelected] = useState(false);
+  // Checkbox para incluir categoría en impresión (desactivado por defecto)
+  const [imprimirCategoriaMasiva, setImprimirCategoriaMasiva] = useState(false);
 
   // Pestaña derecha activa: 'form' | 'excel' | 'fotos'
   const [activeTabRight, setActiveTabRight] = useState<'form' | 'excel' | 'fotos'>('form');
@@ -85,10 +88,14 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
   // Importar Excel
   const [excelName, setExcelName] = useState('ningún archivo elegido');
   const [importRows, setImportRows] = useState<any[]>([]);
+  const [excelCheckedIndices, setExcelCheckedIndices] = useState<number[]>([]);
   const [importStatus, setImportStatus] = useState<{ msg: string; kind: 'ok' | 'err' | 'loading' | '' }>({
     msg: '',
     kind: '',
   });
+
+  // Categorías asignadas al club seleccionado
+  const [clubCategorias, setClubCategorias] = useState<string[]>([]);
 
   // Fotos masivas
   const [fotosMasivasTipo, setFotosMasivasTipo] = useState<'jugadores' | 'administrativos'>('jugadores');
@@ -139,17 +146,93 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     }
   };
 
+  // Cargar categorías asignadas al club seleccionado desde la base de datos
+  useEffect(() => {
+    const fetchClubCategorias = async () => {
+      if (!selectedClubId) {
+        setClubCategorias([]);
+        setCategoriaFiltro('');
+        return;
+      }
+      try {
+        const { data, error } = await sb
+          .from('club_categorias')
+          .select('categoria')
+          .eq('club_id', selectedClubId);
+        if (!error && data && data.length > 0) {
+          const list = data.map((r: any) => r.categoria);
+          setClubCategorias(list);
+        } else {
+          setClubCategorias([]);
+        }
+      } catch (err) {
+        console.error('Error cargando club_categorias:', err);
+        setClubCategorias([]);
+      }
+    };
+    fetchClubCategorias();
+  }, [selectedClubId]);
+
+  // Lista de categorías que aplican para el club seleccionado
+  const categoriasClub = useMemo(() => {
+    if (!selectedClubId) return [];
+    if (clubCategorias.length > 0) return clubCategorias;
+    return categorias;
+  }, [selectedClubId, clubCategorias, categorias]);
+
+  // Sincronizar por defecto Categoria 1 con el filtro de categoría activo
+  useEffect(() => {
+    if (!editingJugador) {
+      if (categoriaFiltro) {
+        setCat1(categoriaFiltro);
+      } else if (categoriasClub.length > 0 && !cat1) {
+        setCat1(categoriasClub[0]);
+      }
+    }
+  }, [categoriaFiltro, editingJugador, categoriasClub]);
+
+  // Pequeños círculos de colores según tipo de estado del jugador
+  const renderEstadoCircles = (estadoStr: string | null | undefined) => {
+    const norm = normalizarEstado(estadoStr);
+    const circles: string[] = [];
+    if (norm === 'SOCIO') {
+      circles.push('#FFF000');
+    } else if (norm === 'INVITADO') {
+      circles.push('#0A5CFF');
+    } else if (norm === 'SOCIO EXPROFESIONAL') {
+      circles.push('#FFF000', '#FF900A');
+    } else if (norm === 'INVITADO EXPROFESIONAL') {
+      circles.push('#0A5CFF', '#FF900A');
+    } else if (norm === 'FEDERADA') {
+      circles.push('#0A5CFF');
+    }
+    if (!circles.length) return null;
+    return (
+      <span className="inline-flex items-center gap-1 ml-1.5 align-middle">
+        {circles.map((col, idx) => (
+          <span
+            key={idx}
+            className="w-2.5 h-2.5 rounded-full inline-block border border-black/20 shadow-xs shrink-0"
+            style={{ backgroundColor: col }}
+            title={norm}
+          />
+        ))}
+      </span>
+    );
+  };
+
   useEffect(() => {
     loadJugadores();
   }, [selectedClubId, categoriaFiltro]);
 
-  // Construir estado del carnet para modal
+  // Construir estado del carnet para modal e impresión
   const generarCardState = (j: Jugador): CardState => {
     const club = clubes.find((c) => c.ClubID === j.ClubID);
     const estNombre = normalizarEstado(j.Estado);
     const estObj = estadosCache.find(
       (e) => String(e.estado).toUpperCase() === estNombre.toUpperCase()
     );
+    const catStr = [j.Categoria, j.Categoria2].filter(Boolean).join(' / ') || j.Categoria || '';
 
     return {
       tipo: 'socio',
@@ -167,6 +250,8 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       footerHeight: 20,
       fnac: isoADmy(j.FechaNacimiento) || 'dd/mm/aaaa',
       dni: j.NumeroDocumento || '00000000',
+      categoria: catStr,
+      showCategoria: imprimirCategoriaMasiva,
       backTopUrl: DEFAULTS.backtop,
       backBottomUrl: DEFAULTS.backbottom,
     };
@@ -194,7 +279,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     setNumeroDoc('');
     setApellidos('');
     setNombres('');
-    setCat1(categorias[0] || '');
+    setCat1(categoriaFiltro || categoriasClub[0] || '');
     setCat2('');
     setEstado('SOCIO');
     setFnac('');
@@ -334,7 +419,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     const selectedCards = docs
       .map((docNum) => {
         const jug = jugadores.find((j: Jugador) => j.NumeroDocumento === docNum);
-        return jug ? generarCardState(jug) : null;
+        return jug ? { ...generarCardState(jug), showCategoria: imprimirCategoriaMasiva } : null;
       })
       .filter(Boolean) as CardState[];
 
@@ -435,6 +520,8 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       });
 
       setImportRows(validated);
+      // Por requerimiento: al subir un archivo de Excel, todos quedan con el check activado
+      setExcelCheckedIndices(validated.map((_, idx) => idx));
       const invalidos = validated.filter((r) => !r.__valid).length;
       setImportStatus({
         msg: `${validated.length} fila(s) leída(s)${invalidos ? `, ${invalidos} con errores` : ''}.`,
@@ -445,14 +532,26 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     }
   };
 
+  const handleToggleAllExcel = () => {
+    if (excelCheckedIndices.length === importRows.length) {
+      setExcelCheckedIndices([]);
+    } else {
+      setExcelCheckedIndices(importRows.map((_, i) => i));
+    }
+  };
+
+  const handleToggleExcelRow = (idx: number) => {
+    setExcelCheckedIndices((prev) =>
+      prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
+    );
+  };
+
   const handleConfirmImport = async () => {
-    const checks = Array.from(document.querySelectorAll<HTMLInputElement>('.importChk:checked'));
-    if (!checks.length) {
+    if (!excelCheckedIndices.length) {
       setImportStatus({ msg: 'No hay filas marcadas para importar.', kind: 'err' });
       return;
     }
-    const indices = checks.map((c) => parseInt(c.dataset.idx || '0', 10));
-    const seleccionados = importRows.filter((_, idx) => indices.includes(idx));
+    const seleccionados = importRows.filter((_, idx) => excelCheckedIndices.includes(idx));
 
     setImportStatus({ msg: 'Importando jugadores…', kind: 'loading' });
     try {
@@ -478,6 +577,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       if (error) throw error;
 
       setImportRows([]);
+      setExcelCheckedIndices([]);
       setExcelName('ningún archivo elegido');
       setImportStatus({ msg: `¡${seleccionados.length} jugadores importados exitosamente!`, kind: 'ok' });
       loadJugadores();
@@ -639,11 +739,17 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
             </span>
             <select
               value={categoriaFiltro}
-              onChange={(e) => setCategoriaFiltro(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setCategoriaFiltro(val);
+                if (val && !editingJugador) {
+                  setCat1(val);
+                }
+              }}
               className="text-xs py-1.5 px-2 bg-white text-[#1a1a1a] border border-[#dcdcd8]"
             >
               <option value="">Todas</option>
-              {categorias.map((cat) => (
+              {categoriasClub.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
@@ -668,7 +774,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           style={{ backgroundColor: '#f4f4f2', borderColor: '#dcdcd8' }}
           className="lg:col-span-7 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3"
         >
-          <div className="flex items-center justify-between border-b border-[#dcdcd8] dark:border-[#2e2e33] pb-2">
+          <div className="flex items-center justify-between border-b border-[#dcdcd8] dark:border-[#2e2e33] pb-2 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               {selectedClub?.LogoArchivo && (
                 <img
@@ -685,21 +791,36 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
             </div>
 
             {filteredJugadores.length > 0 && (
-              <button
-                onClick={handlePrintSelected}
-                disabled={isPrintingSelected}
-                className="file-btn text-xs font-bold py-1.5 px-3 bg-[#18181b] hover:bg-black text-white border border-[#27272a] rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
-                title="Imprimir carnets de los jugadores seleccionados"
-              >
-                <Printer className="w-3.5 h-3.5 text-white" />
-                <span>
-                  {isPrintingSelected
-                    ? 'Preparando impresión…'
-                    : selectedDocs.length > 0
-                    ? `Imprimir seleccionados (${selectedDocs.length})`
-                    : 'Imprimir seleccionados'}
-                </span>
-              </button>
+              <div className="flex items-center gap-2">
+                <label
+                  className="flex items-center gap-1.5 text-xs font-bold text-[#1a1a1a] cursor-pointer bg-white px-2.5 py-1.5 rounded-lg border border-[#dcdcd8] select-none hover:border-[#1a1a1a] transition-colors shadow-2xs"
+                  title="Marcar para que la categoría aparezca en el dorso sobre las redes sociales al imprimir los carnets"
+                >
+                  <input
+                    type="checkbox"
+                    checked={imprimirCategoriaMasiva}
+                    onChange={(e) => setImprimirCategoriaMasiva(e.target.checked)}
+                    className="accent-[#e11d2e] w-4 h-4 rounded cursor-pointer"
+                  />
+                  <span>Imprimir categoría</span>
+                </label>
+
+                <button
+                  onClick={handlePrintSelected}
+                  disabled={isPrintingSelected}
+                  className="file-btn text-xs font-bold py-1.5 px-3 bg-[#18181b] hover:bg-black text-white border border-[#27272a] rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                  title="Imprimir carnets de los jugadores seleccionados"
+                >
+                  <Printer className="w-3.5 h-3.5 text-white" />
+                  <span>
+                    {isPrintingSelected
+                      ? 'Preparando impresión…'
+                      : selectedDocs.length > 0
+                      ? `Imprimir seleccionados (${selectedDocs.length})`
+                      : 'Imprimir seleccionados'}
+                  </span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -769,8 +890,9 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                         <b className="text-slate-900 dark:text-white font-extrabold text-sm block">
                           {j.Apellidos} {j.Nombres}
                         </b>
-                        <span className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                          {normalizarEstado(j.Estado)}
+                        <span className="flex items-center text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                          <span>{normalizarEstado(j.Estado)}</span>
+                          {renderEstadoCircles(j.Estado)}
                         </span>
                       </td>
                       <td className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">{j.NumeroDocumento}</td>
@@ -915,7 +1037,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                     Categoría 1
                   </label>
                   <select value={cat1} onChange={(e) => setCat1(e.target.value)}>
-                    {categorias.map((c) => (
+                    {categoriasClub.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -928,7 +1050,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                   </label>
                   <select value={cat2} onChange={(e) => setCat2(e.target.value)}>
                     <option value="">— Ninguna —</option>
-                    {categorias.map((c) => (
+                    {categoriasClub.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -987,6 +1109,23 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                   onChange={handleFotoFile}
                   className="hidden"
                 />
+
+                {/* Miniatura de la foto luego de subir foto */}
+                {(fotoBase64 || editingJugador?.FotoArchivo) && (
+                  <div className="mt-2.5 flex items-center gap-3 p-2 bg-white rounded-lg border border-[#dcdcd8] shadow-2xs">
+                    <img
+                      src={fotoBase64 ? `data:${fotoMime};base64,${fotoBase64}` : editingJugador?.FotoArchivo || ''}
+                      alt="Miniatura"
+                      className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-[#1a1a1a] block truncate max-w-[200px]">{fotoName}</span>
+                      <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                        ✓ Fotografía lista
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="file-row pt-2">
@@ -994,7 +1133,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                   onClick={handleSaveJugador}
                   className="file-btn text-xs font-bold"
                 >
-                  Guardar jugador
+                  <Save className="w-3.5 h-3.5 inline mr-1" /> Guardar jugador
                 </button>
                 <button
                   onClick={handleNuevoForm}
@@ -1043,6 +1182,23 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               </div>
 
               {importRows.length > 0 && (
+                <div className="flex items-center justify-between bg-white dark:bg-[#1e1e21] p-2 rounded-lg border border-[#dcdcd8] dark:border-[#2e2e33]">
+                  <label className="flex items-center gap-2 text-xs font-bold text-[#1a1a1a] dark:text-white cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={importRows.length > 0 && excelCheckedIndices.length === importRows.length}
+                      onChange={handleToggleAllExcel}
+                      className="cursor-pointer"
+                    />
+                    <span>Activar / desactivar todos</span>
+                  </label>
+                  <span className="text-xs font-black text-[#e11d2e] bg-[#f4f4f2] dark:bg-black/30 px-2.5 py-0.5 rounded-full border border-[#dcdcd8] dark:border-[#2e2e33]">
+                    {excelCheckedIndices.length} de {importRows.length} activados
+                  </span>
+                </div>
+              )}
+
+              {importRows.length > 0 && (
                 <div className="import-preview max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded p-1 space-y-1">
                   {importRows.map((r, i) => (
                     <label
@@ -1051,10 +1207,10 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                     >
                       <input
                         type="checkbox"
-                        className="importChk"
+                        className="importChk cursor-pointer"
                         data-idx={i}
-                        defaultChecked={r.__valid && !r.__isDup}
-                        disabled={!r.__valid}
+                        checked={excelCheckedIndices.includes(i)}
+                        onChange={() => handleToggleExcelRow(i)}
                       />
                       <span className="flex-1 text-xs">
                         <b>{r.Apellidos} {r.Nombres}</b> — {r.NumeroDocumento} ({r.Club}) {r.FechaNacimiento ? `· F.Nac: ${isoADmy(r.FechaNacimiento)}` : ''}

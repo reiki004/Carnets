@@ -14,7 +14,7 @@ const renderSingleCard = (card: CardState, keyPrefix = 'card') => {
     <React.Fragment key={keyPrefix}>
       {/* PÁGINA 1: FRENTE DE LA TARJETA (CR-80 EXACTO 55x86.5mm) */}
       <div className="card-block">
-        <div className="card card-front" style={{ width: '55mm', height: '86.5mm' }}>
+        <div className={`card card-front ${isAdmin ? 'is-admin' : ''}`} style={{ width: '55mm', height: '86.5mm' }}>
           {/* Encabezado ENCABEZADO.jpg */}
           <img
             className="f-header"
@@ -24,14 +24,23 @@ const renderSingleCard = (card: CardState, keyPrefix = 'card') => {
 
           {/* Cuerpo interior parejo, centrado y sin sobreposiciones */}
           <div className="f-body">
-            {/* Foto centrada */}
-            <div className="f-photo-box">
+            {/* Foto centrada - El nivelador escala todo el cuadro */}
+            <div
+              className="f-photo-box"
+              style={{
+                transform: `scale(${(card.photoScale ?? 100) / 100})`,
+                transformOrigin: isAdmin ? 'center center' : 'center top',
+              }}
+            >
               <img
                 src={card.photoUrl || DEFAULTS.photo}
                 alt=""
                 className="f-photo-img"
                 style={{
-                  transform: `scale(${(card.photoScale ?? 100) / 100}) translate(${card.photoOffsetX ?? 0}px, ${card.photoOffsetY ?? 0}px)`,
+                  transform:
+                    card.photoOffsetX || card.photoOffsetY
+                      ? `translate(${card.photoOffsetX ?? 0}px, ${card.photoOffsetY ?? 0}px)`
+                      : undefined,
                 }}
               />
             </div>
@@ -46,16 +55,19 @@ const renderSingleCard = (card: CardState, keyPrefix = 'card') => {
               </div>
             </div>
 
-            {/* Escudo / Logo centrado */}
+            {/* Escudo / Logo centrado - El nivelador escala todo el cuadro */}
             {!isAdmin && (
-              <div className="f-logo-box">
+              <div
+                className="f-logo-box"
+                style={{
+                  transform: `scale(${(card.logoScale ?? 100) / 100})`,
+                  transformOrigin: 'center center',
+                }}
+              >
                 <img
                   src={card.logoUrl || DEFAULTS.logo}
                   alt=""
                   className="f-logo-img"
-                  style={{
-                    transform: `scale(${(card.logoScale ?? 100) / 100})`,
-                  }}
                 />
               </div>
             )}
@@ -94,13 +106,29 @@ const renderSingleCard = (card: CardState, keyPrefix = 'card') => {
 
           {/* Fecha de Nacimiento y DNI en letras negras */}
           <div className="b-mid">
-            <div className="b-field b-nac">
+            <div
+              className="b-field b-nac"
+              style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
+            >
               F. Nacimiento: {card.fnac || 'dd/mm/aaaa'}
             </div>
-            <div className="b-field b-dni">
+            <div
+              className="b-field b-dni"
+              style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
+            >
               DNI: {card.dni || '00000000'}
             </div>
           </div>
+
+          {/* Categoría opcional arriba de la imagen de redes sociales */}
+          {card.showCategoria && card.categoria && (
+            <div
+              className="b-categoria"
+              style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
+            >
+              {card.categoria.toUpperCase()}
+            </div>
+          )}
 
           {/* Redes y Web */}
           <img

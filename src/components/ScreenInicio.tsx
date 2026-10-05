@@ -64,7 +64,7 @@ export const ScreenInicio: React.FC<ScreenInicioProps> = ({
             Plataforma Oficial
           </span>
           <h1 className="text-2xl font-black tracking-tight mt-1 text-white">
-            Interclubes · Impresión de Carnets Zebra ZC300
+            Impresión de Carnets · InterClubes
           </h1>
           <p className="text-xs text-red-100 mt-1 max-w-xl">
             Gestión ágil de jugadores, clubes y personal administrativo para impresión a doble cara en tarjetas plásticas CR-80 (55 × 86.5 mm).
@@ -169,7 +169,7 @@ export const ScreenInicio: React.FC<ScreenInicioProps> = ({
               <ChevronRight className="w-4 h-4 opacity-50" />
             </h3>
             <p className="text-xs text-[#555552] mt-1 leading-relaxed">
-              Carnets especializados sin logo central para árbitros, jueces y colegiados.
+              Carnés para árbitros, presidentes de mesa y directivos
             </p>
           </div>
 

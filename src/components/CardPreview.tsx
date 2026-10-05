@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { DEFAULTS } from '../assets/cardAssets';
 import { toPng } from 'html-to-image';
-import { Printer, Download, Sliders, RotateCcw } from 'lucide-react';
+import { Printer, Download, Sliders, RotateCcw, Image as ImageIcon, Shield } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { printCardDirectly } from '../utils/printHelpers';
 
@@ -21,6 +21,8 @@ export interface CardState {
   footerHeight?: number;
   fnac: string;
   dni: string;
+  categoria?: string;
+  showCategoria?: boolean;
   backTopUrl: string;
   backBottomUrl: string;
 }
@@ -41,6 +43,8 @@ export const DEFAULT_CARD_STATE: CardState = {
   footerHeight: 20,
   fnac: 'dd/mm/aaaa',
   dni: '00000000',
+  categoria: '',
+  showCategoria: false,
   backTopUrl: DEFAULTS.backtop,
   backBottomUrl: DEFAULTS.backbottom,
 };
@@ -51,6 +55,7 @@ interface CardPreviewProps {
   showPrintButton?: boolean;
   onUpdateCard?: React.Dispatch<React.SetStateAction<CardState>> | ((updater: (prev: CardState) => CardState) => void);
   showControls?: boolean;
+  defaultScale?: 'normal' | 'grande' | 'xl';
 }
 
 export const CardPreview: React.FC<CardPreviewProps> = ({
@@ -59,12 +64,13 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
   showPrintButton = true,
   onUpdateCard,
   showControls = true,
+  defaultScale = 'normal',
 }) => {
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
 
-  // Selector de tamaño de vista previa (por defecto: grande)
-  const [cardScale, setCardScale] = React.useState<'normal' | 'grande' | 'xl'>('grande');
+  // Selector de tamaño de vista previa (por defecto: normal / mediano)
+  const [cardScale, setCardScale] = React.useState<'normal' | 'grande' | 'xl'>(defaultScale);
 
   const cardDimensions = {
     normal: { w: '280px', h: '440px' },
@@ -206,7 +212,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           </span>
           <div
             ref={frontRef}
-            className="card card-front"
+            className={`card card-front ${isAdmin ? 'is-admin' : ''}`}
             id="cardFront"
             style={{ width: cardDimensions.w, height: cardDimensions.h }}
           >
@@ -218,17 +224,26 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
               alt="Encabezado"
             />
 
-            {/* 2. Cuerpo interior con distribución pareja, centrada y sin sobreposiciones */}
+            {/* 2. Cuerpo interior ajustado: foto pegada arriba al encabezado y club ajustado abajo al pie */}
             <div className="f-body">
-              {/* Foto centrada arriba */}
-              <div className="f-photo-box">
+              {/* Foto centrada arriba - El nivelador escala todo el cuadro */}
+              <div
+                className="f-photo-box"
+                style={{
+                  transform: `scale(${(card.photoScale ?? 100) / 100})`,
+                  transformOrigin: isAdmin ? 'center center' : 'center top',
+                }}
+              >
                 <img
                   id="imgPhoto"
                   src={card.photoUrl || DEFAULTS.photo}
                   alt="Foto"
                   className="f-photo-img"
                   style={{
-                    transform: `scale(${(card.photoScale ?? 100) / 100}) translate(${card.photoOffsetX ?? 0}px, ${card.photoOffsetY ?? 0}px)`,
+                    transform:
+                      card.photoOffsetX || card.photoOffsetY
+                        ? `translate(${card.photoOffsetX ?? 0}px, ${card.photoOffsetY ?? 0}px)`
+                        : undefined,
                   }}
                 />
               </div>
@@ -243,22 +258,25 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                 </div>
               </div>
 
-              {/* Escudo / Logo del Club centrado */}
+              {/* Escudo / Logo del Club centrado - El nivelador escala todo el cuadro */}
               {!isAdmin && (
-                <div className="f-logo-box">
+                <div
+                  className="f-logo-box"
+                  style={{
+                    transform: `scale(${(card.logoScale ?? 100) / 100})`,
+                    transformOrigin: 'center center',
+                  }}
+                >
                   <img
                     id="imgLogo"
                     src={card.logoUrl || DEFAULTS.logo}
                     alt="Logo Club"
                     className="f-logo-img"
-                    style={{
-                      transform: `scale(${(card.logoScale ?? 100) / 100})`,
-                    }}
                   />
                 </div>
               )}
 
-              {/* Nombre del Club o Cargo en letras negras */}
+              {/* Nombre del Club o Cargo en letras negras ajustado hacia el pie */}
               <div className="f-club-box">
                 <div className="f-clubname" id="txtClubname">
                   {card.clubname
@@ -304,15 +322,34 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
 
             {/* Datos centrales: Fecha de nacimiento y DNI en letras negras */}
             <div className="b-mid">
-              <div className="b-field b-nac" id="txtNac">
+              <div
+                className="b-field b-nac"
+                id="txtNac"
+                style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
+              >
                 F. Nacimiento: {card.fnac || 'dd/mm/aaaa'}
               </div>
-              <div className="b-field b-dni" id="txtDni">
+              <div
+                className="b-field b-dni"
+                id="txtDni"
+                style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
+              >
                 DNI: {card.dni || '00000000'}
               </div>
             </div>
 
-            {/* Redes sociales y web */}
+            {/* Categoría opcional arriba de la imagen de redes sociales */}
+            {card.showCategoria && card.categoria && (
+              <div
+                className="b-categoria"
+                id="txtCategoriaBack"
+                style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
+              >
+                {card.categoria.toUpperCase()}
+              </div>
+            )}
+
+            {/* Redes sociales y web en la parte inferior */}
             <img
               className="b-bottom"
               id="imgBackBottom"
@@ -327,9 +364,9 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
       {showControls && onUpdateCard && (
         <div className="w-full max-w-lg bg-white border border-[#dcdcd8] p-4 rounded-xl shadow-xs text-xs space-y-3 no-print">
           <div className="flex items-center justify-between font-bold text-[#1a1a1a]">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 text-xs uppercase tracking-wider">
               <Sliders className="w-4 h-4 text-[#e11d2e]" />
-              Niveladores de Tamaño y Encuadre
+              Niveladores de Tamaño
             </span>
             <button
               onClick={() => {
@@ -348,125 +385,126 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            {/* Zoom Foto */}
-            <div>
-              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
-                <span>Zoom Foto</span>
-                <span className="font-mono text-[#e11d2e] font-bold">{card.photoScale ?? 100}%</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* Nivelador de Tamaño de la Foto */}
+            <div className="bg-[#f9f9f8] border border-[#e8e8e4] rounded-lg p-2.5 shadow-2xs">
+              <div className="flex justify-between items-center text-[11px] font-bold text-[#1a1a1a] mb-1.5">
+                <span className="flex items-center gap-1">
+                  <ImageIcon className="w-3.5 h-3.5 text-[#e11d2e]" />
+                  Tamaño de Foto
+                </span>
+                <span className="font-mono text-[#e11d2e] font-bold bg-red-50 border border-red-200/60 px-1.5 py-0.5 rounded text-[10px]">
+                  {card.photoScale ?? 100}%
+                </span>
               </div>
               <input
                 type="range"
                 min="50"
-                max="180"
+                max="200"
                 value={card.photoScale ?? 100}
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   onUpdateCard((prev) => ({ ...prev, photoScale: val }));
                 }}
-                className="w-full accent-[#e11d2e] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
+                className="w-full accent-[#e11d2e] cursor-pointer h-1.5 bg-[#e2e2de] rounded-lg"
               />
+              <div className="flex justify-between text-[9px] text-[#71716e] mt-1 font-mono">
+                <span>50%</span>
+                <span className="text-[#1a1a1a] font-semibold">100%</span>
+                <span>200%</span>
+              </div>
             </div>
 
-            {/* Escala Logo */}
+            {/* Nivelador de Tamaño del Logo (o panel de árbitro sin logo) */}
             {!isAdmin ? (
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
-                  <span>Tamaño Escudo</span>
-                  <span className="font-mono text-[#1a1a1a] font-bold">{card.logoScale ?? 100}%</span>
+              <div className="bg-[#f9f9f8] border border-[#e8e8e4] rounded-lg p-2.5 shadow-2xs">
+                <div className="flex justify-between items-center text-[11px] font-bold text-[#1a1a1a] mb-1.5">
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5 text-blue-600" />
+                    Tamaño del Logo
+                  </span>
+                  <span className="font-mono text-blue-600 font-bold bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded text-[10px]">
+                    {card.logoScale ?? 100}%
+                  </span>
                 </div>
                 <input
                   type="range"
-                  min="60"
-                  max="150"
+                  min="50"
+                  max="180"
                   value={card.logoScale ?? 100}
                   onChange={(e) => {
                     const val = Number(e.target.value);
                     onUpdateCard((prev) => ({ ...prev, logoScale: val }));
                   }}
-                  className="w-full accent-[#1a1a1a] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
+                  className="w-full accent-blue-600 cursor-pointer h-1.5 bg-[#e2e2de] rounded-lg"
                 />
+                <div className="flex justify-between text-[9px] text-[#71716e] mt-1 font-mono">
+                  <span>50%</span>
+                  <span className="text-[#1a1a1a] font-semibold">100%</span>
+                  <span>180%</span>
+                </div>
               </div>
             ) : (
-              <div>
-                <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
-                  <span>Altura Pie Inferior</span>
-                  <span className="font-mono text-[#e11d2e] font-bold">{card.footerHeight ?? 20}%</span>
+              <div className="bg-[#f9f9f8] border border-[#e8e8e4] rounded-lg p-2.5 shadow-2xs flex flex-col justify-center">
+                <div className="flex justify-between items-center text-[11px] font-bold text-[#1a1a1a] mb-1">
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                    Árbitro / Directivo
+                  </span>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-medium">
+                    Sin escudo
+                  </span>
                 </div>
-                <input
-                  type="range"
-                  min="16"
-                  max="28"
-                  value={card.footerHeight ?? 20}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    onUpdateCard((prev) => ({ ...prev, footerHeight: val }));
-                  }}
-                  className="w-full accent-[#e11d2e] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
-                />
+                <p className="text-[10px] text-[#71716e] leading-tight">
+                  Los carnets de árbitro no llevan logo de club. Solo se nivela la foto y el pie.
+                </p>
               </div>
             )}
           </div>
 
-          {/* Desplazamiento X / Y Foto */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div>
-              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
-                <span>Mover Foto H.</span>
-                <span className="font-mono text-[#555552]">{card.photoOffsetX ?? 0}px</span>
-              </div>
-              <input
-                type="range"
-                min="-30"
-                max="30"
-                value={card.photoOffsetX ?? 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  onUpdateCard((prev) => ({ ...prev, photoOffsetX: val }));
-                }}
-                className="w-full accent-[#555552] cursor-pointer h-1 bg-[#e9e9e6] rounded-lg"
-              />
+          {/* Control complementario de altura del pie inferior */}
+          <div className="pt-1 border-t border-[#f0f0ed]">
+            <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
+              <span className="text-[#555552]">Altura Pie Inferior</span>
+              <span className="font-mono text-[#555552] font-bold">{card.footerHeight ?? 20}%</span>
             </div>
-
-            <div>
-              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
-                <span>Mover Foto V.</span>
-                <span className="font-mono text-[#555552]">{card.photoOffsetY ?? 0}px</span>
-              </div>
-              <input
-                type="range"
-                min="-30"
-                max="30"
-                value={card.photoOffsetY ?? 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  onUpdateCard((prev) => ({ ...prev, photoOffsetY: val }));
-                }}
-                className="w-full accent-[#555552] cursor-pointer h-1 bg-[#e9e9e6] rounded-lg"
-              />
-            </div>
+            <input
+              type="range"
+              min="16"
+              max="28"
+              value={card.footerHeight ?? 20}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                onUpdateCard((prev) => ({ ...prev, footerHeight: val }));
+              }}
+              className="w-full accent-[#555552] cursor-pointer h-1.5 bg-[#e2e2de] rounded-lg"
+            />
           </div>
 
-          {/* Control de altura del pie inferior para jugador */}
-          {!isAdmin && (
-            <div className="pt-1">
-              <div className="flex justify-between text-[11px] font-bold text-[#1a1a1a] mb-1">
-                <span>Espacio / Altura Pie Inferior</span>
-                <span className="font-mono text-[#e11d2e] font-bold">{card.footerHeight ?? 20}%</span>
-              </div>
+          {/* Checkbox para mostrar la categoría en el carnet (Desactivado por defecto) */}
+          <div className="pt-2 border-t border-[#f0f0ed] flex items-center justify-between">
+            <label className="flex items-center gap-2 text-xs font-bold text-[#1a1a1a] cursor-pointer select-none">
               <input
-                type="range"
-                min="16"
-                max="28"
-                value={card.footerHeight ?? 20}
+                type="checkbox"
+                checked={card.showCategoria ?? false}
                 onChange={(e) => {
-                  const val = Number(e.target.value);
-                  onUpdateCard((prev) => ({ ...prev, footerHeight: val }));
+                  const checked = e.target.checked;
+                  onUpdateCard((prev) => ({ ...prev, showCategoria: checked }));
                 }}
-                className="w-full accent-[#e11d2e] cursor-pointer h-1.5 bg-[#e9e9e6] rounded-lg"
+                className="accent-[#e11d2e] w-4 h-4 rounded cursor-pointer"
               />
-            </div>
-          )}
+              <span>Imprimir categoría en el dorso</span>
+            </label>
+            {card.categoria ? (
+              <span className="font-mono text-[11px] font-bold text-[#1a1a1a] bg-[#e9e9e6] px-2 py-0.5 rounded border border-[#dcdcd8]">
+                {card.categoria.toUpperCase()}
+              </span>
+            ) : (
+              <span className="text-[10px] text-[#888884] italic">
+                (Sin categoría asignada)
+              </span>
+            )}
+          </div>
         </div>
       )}
 

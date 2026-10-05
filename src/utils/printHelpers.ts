@@ -131,11 +131,11 @@ export const printCardDirectly = async (
       // Fallback HTML vectorial exacto
       htmlPages += `
         <div class="card-page">
-          <div class="card-container card-front">
+          <div class="card-container card-front ${isAdmin ? 'is-admin' : ''}">
             <img class="f-header" src="${card.headerUrl || DEFAULTS.header}" alt="" />
             <div class="f-body">
-              <div class="f-photo-box">
-                <img class="f-photo-img" src="${card.photoUrl || DEFAULTS.photo}" style="transform: scale(${(card.photoScale ?? 100) / 100}) translate(${card.photoOffsetX ?? 0}px, ${card.photoOffsetY ?? 0}px);" alt="" />
+              <div class="f-photo-box" style="transform: scale(${(card.photoScale ?? 100) / 100}); transform-origin: ${isAdmin ? 'center center' : 'center top'};">
+                <img class="f-photo-img" src="${card.photoUrl || DEFAULTS.photo}" style="${card.photoOffsetX || card.photoOffsetY ? `transform: translate(${card.photoOffsetX ?? 0}px, ${card.photoOffsetY ?? 0}px);` : ''}" alt="" />
               </div>
               <div class="f-names-box">
                 <div class="f-apellidos">${(card.apellidos || 'APELLIDO').toUpperCase()}</div>
@@ -143,7 +143,7 @@ export const printCardDirectly = async (
               </div>
               ${
                 !isAdmin
-                  ? `<div class="f-logo-box"><img class="f-logo-img" src="${card.logoUrl || DEFAULTS.logo}" style="transform: scale(${(card.logoScale ?? 100) / 100});" alt="" /></div>`
+                  ? `<div class="f-logo-box" style="transform: scale(${(card.logoScale ?? 100) / 100}); transform-origin: center center;"><img class="f-logo-img" src="${card.logoUrl || DEFAULTS.logo}" alt="" /></div>`
                   : ''
               }
               <div class="f-club-box">
@@ -171,6 +171,11 @@ export const printCardDirectly = async (
               <div class="b-field">F. Nacimiento: ${card.fnac || 'dd/mm/aaaa'}</div>
               <div class="b-field">DNI: ${card.dni || '00000000'}</div>
             </div>
+            ${
+              card.showCategoria && card.categoria
+                ? `<div class="b-categoria">${card.categoria.toUpperCase()}</div>`
+                : ''
+            }
             <img class="b-bottom" src="${card.backBottomUrl || DEFAULTS.backbottom}" alt="" />
           </div>
         </div>
@@ -183,6 +188,9 @@ export const printCardDirectly = async (
       <head>
         <meta charset="utf-8">
         <title>Carnet Zebra ZC300 - ${card.apellidos} ${card.nombres}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;600;700&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
         <style>
           @page {
             size: 55mm 86.5mm;
@@ -200,8 +208,7 @@ export const printCardDirectly = async (
             background: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            font-family: 'Arial Narrow', 'Archivo Narrow', 'Roboto Condensed', 'Nimbus Sans Narrow', 'Liberation Sans Narrow', Arial, sans-serif;
-            font-stretch: condensed;
+            font-family: 'Arial', Helvetica, sans-serif;
           }
           .card-page {
             width: 55mm !important;
@@ -251,19 +258,38 @@ export const printCardDirectly = async (
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-evenly;
-            padding: 1.5mm 3mm;
+            justify-content: space-between;
+            padding: 0.5mm 2mm;
             overflow: hidden;
           }
           .card-front .f-photo-box {
-            width: 50%;
-            height: 36%;
-            max-height: 36%;
+            width: 62%;
+            height: 40%;
+            max-height: 42%;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow: visible;
             flex-shrink: 0;
+          }
+          .card-front.is-admin .f-body {
+            justify-content: flex-start;
+            padding: 1.5mm 2mm 0.8mm 2mm;
+          }
+          .card-front.is-admin .f-photo-box {
+            width: 65%;
+            height: 43%;
+            max-height: 45%;
+            margin-top: 1mm;
+            margin-bottom: auto;
+          }
+          .card-front.is-admin .f-names-box {
+            margin-top: 0;
+            margin-bottom: auto;
+          }
+          .card-front.is-admin .f-club-box {
+            margin-top: 0;
+            margin-bottom: 0.5mm;
           }
           .card-front .f-photo-img {
             width: 100%;
@@ -275,25 +301,28 @@ export const printCardDirectly = async (
             text-align: center;
             line-height: 1.15;
             flex-shrink: 0;
+            position: relative;
+            z-index: 2;
           }
           .card-front .f-apellidos,
           .card-front .f-nombres {
             color: #000000 !important;
+            font-family: 'Arial', Helvetica, sans-serif !important;
             font-weight: 700;
-            font-size: 3.4mm;
+            font-size: calc(3.4mm + 0.5pt);
             letter-spacing: 0.01em;
             text-transform: uppercase;
             margin: 0;
             padding: 0;
           }
           .card-front .f-logo-box {
-            width: 38%;
-            height: 26%;
-            max-height: 26%;
+            width: 48%;
+            height: 28%;
+            max-height: 30%;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow: visible;
             flex-shrink: 0;
           }
           .card-front .f-logo-img {
@@ -309,8 +338,9 @@ export const printCardDirectly = async (
           }
           .card-front .f-clubname {
             color: #000000 !important;
+            font-family: 'Arial', Helvetica, sans-serif !important;
             font-weight: 700;
-            font-size: 3.2mm;
+            font-size: calc(3.2mm + 0.5pt);
             letter-spacing: 0.015em;
             text-transform: uppercase;
           }
@@ -323,6 +353,7 @@ export const printCardDirectly = async (
           }
           .card-back {
             justify-content: space-between;
+            font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
           }
           .card-back .b-top {
             width: 100%;
@@ -341,17 +372,30 @@ export const printCardDirectly = async (
           }
           .card-back .b-field {
             color: #000000 !important;
+            font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
+            font-weight: 700;
+            font-size: calc(3.1mm + 1pt);
+            text-align: center;
+          }
+          .card-back .b-categoria {
+            width: 100%;
+            color: #000000 !important;
+            font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
             font-weight: 700;
             font-size: 3.1mm;
             text-align: center;
+            margin-top: auto;
+            margin-bottom: 2mm;
+            flex-shrink: 0;
+            display: block;
           }
           .card-back .b-bottom {
             width: 100%;
-            height: 28%;
-            object-fit: cover;
+            height: 27%;
+            object-fit: contain;
             display: block;
-            margin-top: auto;
             flex-shrink: 0;
+            margin-top: auto;
           }
         </style>
       </head>
@@ -419,11 +463,11 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
       // Cara frontal
       pagesHtml += `
         <div class="card-page">
-          <div class="card-container card-front">
+          <div class="card-container card-front ${isAdmin ? 'is-admin' : ''}">
             <img class="f-header" src="${c.headerUrl || DEFAULTS.header}" alt="" />
             <div class="f-body">
-              <div class="f-photo-box">
-                <img class="f-photo-img" src="${c.photoUrl || DEFAULTS.photo}" style="transform: scale(${(c.photoScale ?? 100) / 100}) translate(${c.photoOffsetX ?? 0}px, ${c.photoOffsetY ?? 0}px);" alt="" />
+              <div class="f-photo-box" style="transform: scale(${(c.photoScale ?? 100) / 100}); transform-origin: ${isAdmin ? 'center center' : 'center top'};">
+                <img class="f-photo-img" src="${c.photoUrl || DEFAULTS.photo}" style="${c.photoOffsetX || c.photoOffsetY ? `transform: translate(${c.photoOffsetX ?? 0}px, ${c.photoOffsetY ?? 0}px);` : ''}" alt="" />
               </div>
               <div class="f-names-box">
                 <div class="f-apellidos">${(c.apellidos || 'APELLIDO').toUpperCase()}</div>
@@ -431,7 +475,7 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
               </div>
               ${
                 !isAdmin
-                  ? `<div class="f-logo-box"><img class="f-logo-img" src="${c.logoUrl || DEFAULTS.logo}" style="transform: scale(${(c.logoScale ?? 100) / 100});" alt="" /></div>`
+                  ? `<div class="f-logo-box" style="transform: scale(${(c.logoScale ?? 100) / 100}); transform-origin: center center;"><img class="f-logo-img" src="${c.logoUrl || DEFAULTS.logo}" alt="" /></div>`
                   : ''
               }
               <div class="f-club-box">
@@ -452,6 +496,11 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
               <div class="b-field">F. Nacimiento: ${c.fnac || 'dd/mm/aaaa'}</div>
               <div class="b-field">DNI: ${c.dni || '00000000'}</div>
             </div>
+            ${
+              c.showCategoria && c.categoria
+                ? `<div class="b-categoria">${c.categoria.toUpperCase()}</div>`
+                : ''
+            }
             <img class="b-bottom" src="${c.backBottomUrl || DEFAULTS.backbottom}" alt="" />
           </div>
         </div>
@@ -464,6 +513,9 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
       <head>
         <meta charset="utf-8">
         <title>Impresión por lotes Zebra ZC300 (${cards.length} carnets)</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@400;600;700&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
         <style>
           @page {
             size: 55mm 86.5mm;
@@ -481,8 +533,7 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
             background: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            font-family: 'Arial Narrow', 'Archivo Narrow', 'Roboto Condensed', 'Nimbus Sans Narrow', 'Liberation Sans Narrow', Arial, sans-serif;
-            font-stretch: condensed;
+            font-family: 'Arial', Helvetica, sans-serif;
           }
           .card-page {
             width: 55mm !important;
@@ -525,19 +576,38 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-evenly;
-            padding: 1.5mm 3mm;
+            justify-content: space-between;
+            padding: 0.5mm 2mm;
             overflow: hidden;
           }
           .card-front .f-photo-box {
-            width: 50%;
-            height: 36%;
-            max-height: 36%;
+            width: 62%;
+            height: 40%;
+            max-height: 42%;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow: visible;
             flex-shrink: 0;
+          }
+          .card-front.is-admin .f-body {
+            justify-content: flex-start;
+            padding: 1.5mm 2mm 0.8mm 2mm;
+          }
+          .card-front.is-admin .f-photo-box {
+            width: 65%;
+            height: 43%;
+            max-height: 45%;
+            margin-top: 1mm;
+            margin-bottom: auto;
+          }
+          .card-front.is-admin .f-names-box {
+            margin-top: 0;
+            margin-bottom: auto;
+          }
+          .card-front.is-admin .f-club-box {
+            margin-top: 0;
+            margin-bottom: 0.5mm;
           }
           .card-front .f-photo-img {
             width: 100%;
@@ -549,25 +619,28 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
             text-align: center;
             line-height: 1.15;
             flex-shrink: 0;
+            position: relative;
+            z-index: 2;
           }
           .card-front .f-apellidos,
           .card-front .f-nombres {
             color: #000000 !important;
+            font-family: 'Arial', Helvetica, sans-serif !important;
             font-weight: 700;
-            font-size: 3.4mm;
+            font-size: calc(3.4mm + 0.5pt);
             letter-spacing: 0.01em;
             text-transform: uppercase;
             margin: 0;
             padding: 0;
           }
           .card-front .f-logo-box {
-            width: 38%;
-            height: 26%;
-            max-height: 26%;
+            width: 48%;
+            height: 28%;
+            max-height: 30%;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow: visible;
             flex-shrink: 0;
           }
           .card-front .f-logo-img {
@@ -583,8 +656,9 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
           }
           .card-front .f-clubname {
             color: #000000 !important;
+            font-family: 'Arial', Helvetica, sans-serif !important;
             font-weight: 700;
-            font-size: 3.2mm;
+            font-size: calc(3.2mm + 0.5pt);
             letter-spacing: 0.015em;
             text-transform: uppercase;
           }
@@ -597,6 +671,7 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
           }
           .card-back {
             justify-content: space-between;
+            font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
           }
           .card-back .b-top {
             width: 100%;
@@ -615,17 +690,30 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
           }
           .card-back .b-field {
             color: #000000 !important;
+            font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
+            font-weight: 700;
+            font-size: calc(3.1mm + 1pt);
+            text-align: center;
+          }
+          .card-back .b-categoria {
+            width: 100%;
+            color: #000000 !important;
+            font-family: Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif !important;
             font-weight: 700;
             font-size: 3.1mm;
             text-align: center;
+            margin-top: auto;
+            margin-bottom: 2mm;
+            flex-shrink: 0;
+            display: block;
           }
           .card-back .b-bottom {
             width: 100%;
-            height: 28%;
-            object-fit: cover;
+            height: 27%;
+            object-fit: contain;
             display: block;
-            margin-top: auto;
             flex-shrink: 0;
+            margin-top: auto;
           }
         </style>
       </head>
