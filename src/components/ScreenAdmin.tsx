@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   sb,
   Administrativo,
@@ -10,19 +10,23 @@ import { DEFAULTS } from '../assets/cardAssets';
 import { CardState } from './CardPreview';
 import { DateInput } from './DateInput';
 import { isoADmy, dmyAIso } from '../utils/dateHelpers';
-import { Search, Plus, Save, Upload, Eye, Briefcase, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, Save, Upload, Eye, Briefcase, Scale, Edit2, Trash2 } from 'lucide-react';
 
 interface ScreenAdminProps {
   cargosCache: any[];
+  ternas?: string[];
   onOpenCardModal: (card: CardState) => void;
 }
 
 export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
   cargosCache,
+  ternas = [],
   onOpenCardModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Administrativo[]>([]);
+  const [filtroTerna, setFiltroTerna] = useState<string>('');
+  const [imprimirTernaDorso, setImprimirTernaDorso] = useState<boolean>(false);
   const [status, setStatus] = useState<{ msg: string; kind: 'ok' | 'err' | 'loading' | '' }>({
     msg: '',
     kind: '',
@@ -34,7 +38,9 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
   const [numDoc, setNumDoc] = useState('');
   const [apellidos, setApellidos] = useState('');
   const [nombres, setNombres] = useState('');
-  const [cargo, setCargo] = useState(cargosCache[0]?.cargo || 'ÁRBITRO');
+  // Cargo debe iniciar en ÁRBITRO por defecto
+  const [cargo, setCargo] = useState('ÁRBITRO');
+  const [terna, setTerna] = useState('');
   const [fnac, setFnac] = useState('');
   const [fotoName, setFotoName] = useState('ninguna');
   const [fotoBase64, setFotoBase64] = useState<string | null>(null);
@@ -42,12 +48,40 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
 
   const fotoInputRef = useRef<HTMLInputElement>(null);
 
+  // Lista de cargos asegurando que ÁRBITRO esté disponible
+  const cargosDisponibles = cargosCache.some((c) => c.cargo.toUpperCase() === 'ÁRBITRO')
+    ? cargosCache.map((c) => c.cargo)
+    : ['ÁRBITRO', ...cargosCache.map((c) => c.cargo)];
+
+  const isArbitro = cargo.trim().toUpperCase() === 'ÁRBITRO' || cargo.trim().toUpperCase() === 'ARBITRO';
+
   function esNombreValido(str: string): boolean {
     return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/.test(str.trim()) && str.trim().length > 0;
   }
 
-  const generarCardStateAdmin = (adm: Administrativo): CardState => {
+  // Carga inicial de árbitros para navegación directa
+  const cargarTodosLosArbitros = async () => {
+    try {
+      const { data, error } = await sb
+        .from('administrativos')
+        .select('*')
+        .order('apellidos')
+        .limit(50);
+      if (!error && data) {
+        setSearchResults(data.map(adminRowToJs));
+      }
+    } catch (err) {
+      console.warn('Error al cargar árbitros:', err);
+    }
+  };
+
+  useEffect(() => {
+    cargarTodosLosArbitros();
+  }, []);
+
+  const generarCardStateAdmin = (adm: Administrativo, incluirTernaDorso: boolean = imprimirTernaDorso): CardState => {
     const cargoObj = cargosCache.find((c) => c.cargo === adm.ClubCargo);
+    const ternaVal = adm.Terna || adm.Categoria || '';
 
     return {
       tipo: 'admin',
@@ -65,8 +99,9 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       footerHeight: 20,
       fnac: isoADmy(adm.FechaNacimiento) || 'dd/mm/aaaa',
       dni: adm.NumeroDocumento || '00000000',
-      categoria: adm.Categoria || '',
-      showCategoria: false,
+      categoria: ternaVal,
+      terna: ternaVal,
+      showCategoria: incluirTernaDorso, // desactivada por defecto
       backTopUrl: DEFAULTS.backtop,
       backBottomUrl: DEFAULTS.backbottom,
     };
@@ -78,7 +113,8 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     setNumDoc(adm.NumeroDocumento || '');
     setApellidos(adm.Apellidos || '');
     setNombres(adm.Nombres || '');
-    setCargo(adm.ClubCargo || (cargosCache[0]?.cargo || 'ÁRBITRO'));
+    setCargo(adm.ClubCargo || 'ÁRBITRO');
+    setTerna(adm.Terna || adm.Categoria || '');
     setFnac(isoADmy(adm.FechaNacimiento));
     setFotoName(adm.FotoArchivo ? 'foto actual (sin cambios)' : 'ninguna');
     setFotoBase64(null);
@@ -87,9 +123,9 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
 
   const handleBuscar = async () => {
     const q = searchQuery.trim();
-    setSearchResults([]);
     if (!q) {
-      setStatus({ msg: 'Escribe un documento o apellido para buscar.', kind: 'err' });
+      cargarTodosLosArbitros();
+      setStatus({ msg: 'Mostrando listado general.', kind: 'ok' });
       return;
     }
     setStatus({ msg: 'Buscando en árbitros…', kind: 'loading' });
@@ -98,12 +134,13 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
         .from('administrativos')
         .select('*')
         .or(`numero_documento.ilike.%${q}%,apellidos.ilike.%${q}%,nombres.ilike.%${q}%`)
-        .limit(20);
+        .limit(30);
 
       if (error) throw error;
       const list = (data || []).map(adminRowToJs);
       if (!list.length) {
         setStatus({ msg: 'Sin resultados.', kind: 'err' });
+        setSearchResults([]);
         return;
       }
       setSearchResults(list);
@@ -119,7 +156,9 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     setNumDoc('');
     setApellidos('');
     setNombres('');
-    setCargo(cargosCache[0]?.cargo || 'DIRECTIVO');
+    // El cargo debe iniciar en ÁRBITRO por defecto
+    setCargo('ÁRBITRO');
+    setTerna('');
     setFnac('');
     setFotoName('ninguna');
     setFotoBase64(null);
@@ -189,6 +228,8 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
         fotoUrl = await subirImagenSupabase('fotos', `${doc}_admin.jpg`, fotoBase64, fotoMime);
       }
 
+      const ternaFinal = isArbitro ? terna.trim().toUpperCase() : '';
+
       const data: Administrativo = {
         TipoDocumento: tipoDoc,
         NumeroDocumento: doc,
@@ -196,7 +237,8 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
         Nombres: nombres.trim().toUpperCase(),
         Tipo: 'Administrativo',
         ClubCargo: cargo,
-        Categoria: '',
+        Categoria: ternaFinal,
+        Terna: ternaFinal,
         Estado: '',
         FechaNacimiento: fechaIso,
         FotoArchivo: fotoUrl,
@@ -207,29 +249,53 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       if (error) throw error;
 
       setStatus({ msg: '¡Árbitro guardado exitosamente!', kind: 'ok' });
+      cargarTodosLosArbitros();
       handleNuevo();
     } catch (err: any) {
       setStatus({ msg: 'Error al guardar: ' + err.message, kind: 'err' });
     }
   };
 
+  // Filtrado por terna arbitral en el directorio
+  const arbitrosFiltrados = searchResults.filter((r) => {
+    if (!filtroTerna) return true;
+    const t = (r.Terna || r.Categoria || '').toUpperCase();
+    return t === filtroTerna.toUpperCase();
+  });
+
   return (
     <div className="space-y-4">
       {/* Distribución equilibrada en 2 columnas (evita ventana larga) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Columna Izquierda (6 cols): Buscador y Lista de Árbitros (Div principal #f4f4f2) */}
+        {/* Columna Izquierda (6 cols): Buscador, Filtro de Terna y Directorio de Árbitros (Div principal #f4f4f2) */}
         <div className="lg:col-span-6 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
+          <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2 flex-wrap gap-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a] flex items-center gap-1.5">
               <Briefcase className="w-4 h-4 text-[#e11d2e]" />
-              Directorio de Árbitros
+              Directorio de Árbitros ({arbitrosFiltrados.length})
             </h2>
-            <button
-              onClick={handleNuevo}
-              className="file-btn text-xs py-1 px-2.5 bg-[#e11d2e] hover:bg-[#c81926] text-white border-none font-bold"
-            >
-              <Plus className="w-3.5 h-3.5" /> Nuevo
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Casilla de verificación para imprimir al dorso la terna arbitral (desactivada por defecto) */}
+              <label
+                className="flex items-center gap-1.5 text-xs font-bold text-[#1a1a1a] cursor-pointer bg-white px-2.5 py-1.5 rounded-lg border border-[#dcdcd8] select-none hover:border-[#1a1a1a] transition-colors shadow-2xs"
+                title="Marcar para que la terna arbitral aparezca en el dorso sobre las redes sociales al imprimir los carnets"
+              >
+                <input
+                  type="checkbox"
+                  checked={imprimirTernaDorso}
+                  onChange={(e) => setImprimirTernaDorso(e.target.checked)}
+                  className="accent-[#e11d2e] w-3.5 h-3.5 rounded cursor-pointer"
+                />
+                <span>Imprimir terna al dorso</span>
+              </label>
+
+              <button
+                onClick={handleNuevo}
+                className="file-btn text-xs py-1 px-2.5 bg-[#e11d2e] hover:bg-[#c81926] text-white border-none font-bold"
+              >
+                <Plus className="w-3.5 h-3.5" /> Nuevo
+              </button>
+            </div>
           </div>
 
           <label className="text-xs font-bold text-[#1a1a1a] block">
@@ -249,9 +315,37 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
             </button>
           </div>
 
-          {searchResults.length > 0 && (
+          {/* Filtro para la terna arbitral en el directorio */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs font-bold text-[#555552] whitespace-nowrap flex items-center gap-1">
+              <Scale className="w-3.5 h-3.5 text-[#e11d2e]" /> Filtro de Terna:
+            </span>
+            <select
+              value={filtroTerna}
+              onChange={(e) => setFiltroTerna(e.target.value)}
+              className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8] py-1.5 px-2 rounded"
+            >
+              <option value="">— Todas las ternas arbitrales —</option>
+              {ternas.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            {filtroTerna && (
+              <button
+                onClick={() => setFiltroTerna('')}
+                className="text-xs text-[#e11d2e] hover:underline font-bold px-1.5 py-1 bg-white border border-[#dcdcd8] rounded"
+                title="Quitar filtro de terna"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {arbitrosFiltrados.length > 0 ? (
             <div className="space-y-2 mt-3 max-h-96 overflow-y-auto pr-1">
-              {searchResults.map((r) => (
+              {arbitrosFiltrados.map((r) => (
                 <div
                   key={r.NumeroDocumento}
                   className="p-2.5 rounded-lg border border-[#dcdcd8] hover:border-[#e11d2e] bg-white flex items-center justify-between gap-2 transition-colors"
@@ -263,14 +357,21 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                     <b className="text-xs text-[#1a1a1a] font-extrabold block">
                       {r.Apellidos} {r.Nombres}
                     </b>
-                    <span className="text-[11.5px] text-[#555552] font-semibold block">
-                      {r.TipoDocumento}: {r.NumeroDocumento} · {r.ClubCargo}
-                    </span>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-[11.5px] text-[#555552] font-semibold">
+                        {r.TipoDocumento}: {r.NumeroDocumento} · {r.ClubCargo}
+                      </span>
+                      {(r.Terna || r.Categoria) && (
+                        <span className="text-[10.5px] font-bold text-[#e11d2e] bg-[#e11d2e]/10 px-1.5 py-0.2 rounded border border-[#e11d2e]/20">
+                          ⚖️ {r.Terna || r.Categoria}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
-                      onClick={() => onOpenCardModal(generarCardStateAdmin(r))}
+                      onClick={() => onOpenCardModal(generarCardStateAdmin(r, imprimirTernaDorso))}
                       className="p-1.5 text-emerald-600 hover:text-emerald-800 bg-[#f4f4f2] hover:bg-emerald-50 border border-[#dcdcd8] rounded-md transition-colors"
                       title="Ver carnet emergente / Imprimir"
                     >
@@ -294,10 +395,14 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="text-center py-6 text-xs text-[#888884] bg-white rounded-lg border border-[#dcdcd8]">
+              No se encontraron árbitros {filtroTerna ? `en la terna "${filtroTerna}"` : ''}.
+            </div>
           )}
         </div>
 
-        {/* Columna Derecha (6 cols): Formulario de Registro / Edición (Div principal #f4f4f2) */}
+        {/* Columna Derecha (6 cols): Formulario de Registro / Edición con Selector de Terna (Div principal #f4f4f2) */}
         <div className="lg:col-span-6 bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3">
           <div className="flex items-center justify-between border-b border-[#dcdcd8] pb-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#1a1a1a]">
@@ -356,29 +461,65 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
             />
           </div>
 
+          {/* Cargo y Selector de Terna Arbitral */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs font-bold text-[#1a1a1a]">
                 Cargo
               </label>
-              <select value={cargo} onChange={(e) => setCargo(e.target.value)}>
-                {cargosCache.map((c) => (
-                  <option key={c.cargo} value={c.cargo}>
-                    {c.cargo}
+              <select
+                value={cargo}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCargo(val);
+                  if (val.toUpperCase() !== 'ÁRBITRO' && val.toUpperCase() !== 'ARBITRO') {
+                    setTerna('');
+                  }
+                }}
+              >
+                {cargosDisponibles.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-bold text-[#1a1a1a]">
-                Fecha nacimiento
+              <label className="text-xs font-bold text-[#1a1a1a] flex items-center justify-between">
+                <span>Terna Arbitral</span>
+                {!isArbitro && (
+                  <span className="text-[10px] text-[#888884] font-normal italic">
+                    (Solo para Árbitro)
+                  </span>
+                )}
               </label>
-              <DateInput
-                value={fnac}
-                onChange={setFnac}
-                placeholder="dd/mm/aaaa"
-              />
+              <select
+                value={isArbitro ? terna : ''}
+                onChange={(e) => setTerna(e.target.value)}
+                disabled={!isArbitro}
+                className={`w-full text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8] py-1.5 px-2 rounded ${
+                  !isArbitro ? 'opacity-50 cursor-not-allowed bg-zinc-100' : ''
+                }`}
+              >
+                <option value="">— {isArbitro ? 'Seleccionar terna' : 'No aplica'} —</option>
+                {ternas.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-[#1a1a1a]">
+              Fecha nacimiento
+            </label>
+            <DateInput
+              value={fnac}
+              onChange={setFnac}
+              placeholder="dd/mm/aaaa"
+            />
           </div>
 
           <div>

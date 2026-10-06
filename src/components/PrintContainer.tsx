@@ -120,13 +120,15 @@ const renderSingleCard = (card: CardState, keyPrefix = 'card') => {
             </div>
           </div>
 
-          {/* Categoría opcional arriba de la imagen de redes sociales */}
-          {card.showCategoria && card.categoria && (
+          {/* Categoría o Terna arbitral arriba de la imagen de redes sociales */}
+          {card.showCategoria && (card.terna || card.categoria) && (
             <div
               className="b-categoria"
               style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
             >
-              {card.categoria.toUpperCase()}
+              {card.tipo === 'admin'
+                ? `Terna: ${(card.terna || card.categoria || '').replace(/^terna:\s*/i, '').trim().toUpperCase()}`
+                : (card.categoria || '').toUpperCase()}
             </div>
           )}
 

@@ -57,27 +57,35 @@ export const ScreenInicio: React.FC<ScreenInicioProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Banner de bienvenida y acción rápida (Div encabezado #e11d2e con texto #ffffff) */}
-      <div className="bg-[#e11d2e] text-white rounded-2xl p-6 shadow-sm border border-[#c81926] flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider bg-black/20 text-white px-2.5 py-0.5 rounded-full border border-white/20">
+      {/* Banner de bienvenida y acción rápida con degradados de rojos */}
+      <div className="bg-gradient-to-r from-[#800713] via-[#b3141f] via-[#d61c28] to-[#ea2434] text-white rounded-2xl p-6 shadow-md border border-[#991b1b] flex flex-wrap items-center justify-between gap-4 relative overflow-hidden">
+        {/* Resplandor y profundidad visual de degradado */}
+        <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute left-1/4 -bottom-16 w-56 h-56 bg-black/15 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10">
+          <span className="text-xs font-bold uppercase tracking-wider bg-black/25 text-white px-2.5 py-0.5 rounded-full border border-white/20 backdrop-blur-xs">
             Plataforma Oficial
           </span>
-          <h1 className="text-2xl font-black tracking-tight mt-1 text-white">
+          <h1 className="text-2xl font-black tracking-tight mt-1 text-white drop-shadow-xs">
             Impresión de Carnets · InterClubes
           </h1>
-          <p className="text-xs text-red-100 mt-1 max-w-xl">
+          <p className="text-xs text-red-100 mt-1 max-w-xl leading-relaxed">
             Gestión ágil de jugadores, clubes y personal administrativo para impresión a doble cara en tarjetas plásticas CR-80 (55 × 86.5 mm).
           </p>
         </div>
 
-        <button
-          onClick={onOpenCardModal}
-          className="bg-white text-[#1a1a1a] hover:bg-[#f4f4f2] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer border border-white"
-        >
-          <Printer className="w-4 h-4 text-[#e11d2e]" />
-          <span>Ver Carnet Modelo</span>
-        </button>
+        <div className="relative z-10">
+          <button
+            onClick={onOpenCardModal}
+            className="bg-white hover:bg-[#f4f4f2] font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 cursor-pointer border border-white"
+          >
+            <Printer className="w-4 h-4 text-[#e11d2e]" />
+            <span style={{ color: '#000000' }} className="text-[#000000] font-bold">
+              Ver Carnet Modelo
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Tarjetas de Métricas Estadísticas (Div principales #f4f4f2) */}

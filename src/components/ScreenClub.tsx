@@ -30,6 +30,7 @@ import {
   CheckSquare,
   Shield,
   Save,
+  Search,
 } from 'lucide-react';
 
 interface ScreenClubProps {
@@ -689,52 +690,55 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       {/* Barra superior: Selector de Club & Filtros (Div principal #f4f4f2) */}
       <div
         style={{ backgroundColor: '#f4f4f2', borderColor: '#dcdcd8' }}
-        className="bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3"
+        className="bg-[#f4f4f2] border border-[#dcdcd8] p-4 rounded-xl shadow-xs space-y-3"
       >
-        <div className="flex items-center gap-2.5 flex-1 min-w-[280px]">
-          {/* Logo del club al lado izquierdo del nombre */}
-          {selectedClub?.LogoArchivo ? (
-            <img
-              src={selectedClub.LogoArchivo}
-              alt={selectedClub.NombreClub}
-              className="w-9 h-9 rounded-lg object-contain bg-white border border-[#dcdcd8] p-0.5 shadow-xs shrink-0"
-              title={selectedClub.NombreClub}
-            />
-          ) : (
-            <div className="w-9 h-9 rounded-lg bg-white dark:bg-[#1e1e21] border border-[#dcdcd8] dark:border-[#2e2e33] flex items-center justify-center text-[#e11d2e] shrink-0 shadow-xs">
-              <Shield className="w-4 h-4" />
+        {/* Fila 1: Selector de Club y Selector de Categoría alineados */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          {/* Selector de Club (7 columnas) */}
+          <div className="md:col-span-7 flex items-center gap-2.5">
+            {/* Logo del club al lado izquierdo del nombre */}
+            {selectedClub?.LogoArchivo ? (
+              <img
+                src={selectedClub.LogoArchivo}
+                alt={selectedClub.NombreClub}
+                className="w-9 h-9 rounded-lg object-contain bg-white border border-[#dcdcd8] p-0.5 shadow-xs shrink-0"
+                title={selectedClub.NombreClub}
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-lg bg-white dark:bg-[#1e1e21] border border-[#dcdcd8] dark:border-[#2e2e33] flex items-center justify-center text-[#e11d2e] shrink-0 shadow-xs">
+                <Shield className="w-4 h-4" />
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-xs font-bold text-[#1a1a1a] dark:text-[#f4f4f5] whitespace-nowrap">
+                Club:
+              </span>
+              <select
+                value={selectedClubId}
+                onChange={(e) => setSelectedClubId(e.target.value)}
+                className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8] py-1.5 px-2 rounded"
+              >
+                <option value="">— Selecciona un club —</option>
+                {clubes.map((c) => (
+                  <option key={c.ClubID} value={c.ClubID}>
+                    {c.NombreClub}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => refreshClubes()}
+                className="file-btn alt text-xs p-2"
+                title="Refrescar clubes"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
             </div>
-          )}
-
-          <div className="flex items-center gap-2 flex-1">
-            <span className="text-xs font-bold text-[#1a1a1a] dark:text-[#f4f4f5] whitespace-nowrap">
-              Club:
-            </span>
-            <select
-              value={selectedClubId}
-              onChange={(e) => setSelectedClubId(e.target.value)}
-              className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8]"
-            >
-              <option value="">— Selecciona un club —</option>
-              {clubes.map((c) => (
-                <option key={c.ClubID} value={c.ClubID}>
-                  {c.NombreClub}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => refreshClubes()}
-              className="file-btn alt text-xs p-2"
-              title="Refrescar clubes"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-[#555552]">
+          {/* Selector de Categoría alineado en la fila (5 columnas) */}
+          <div className="md:col-span-5 flex items-center gap-2">
+            <span className="text-xs font-bold text-[#1a1a1a] whitespace-nowrap">
               Categoría:
             </span>
             <select
@@ -746,9 +750,9 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                   setCat1(val);
                 }
               }}
-              className="text-xs py-1.5 px-2 bg-white text-[#1a1a1a] border border-[#dcdcd8]"
+              className="flex-1 text-xs py-1.5 px-2 bg-white text-[#1a1a1a] border border-[#dcdcd8] rounded"
             >
-              <option value="">Todas</option>
+              <option value="">Todas las categorías</option>
               {categoriasClub.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
@@ -756,14 +760,36 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               ))}
             </select>
           </div>
+        </div>
 
-          <input
-            type="text"
-            value={textoFiltro}
-            onChange={(e) => setTextoFiltro(e.target.value)}
-            placeholder="Filtrar por DNI o Apellidos..."
-            className="text-xs py-1.5 px-3 w-48 bg-white text-[#1a1a1a] border border-[#dcdcd8]"
-          />
+        {/* Fila 2: Filtro del jugador DEBAJO del selector de club */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center pt-2 border-t border-[#dcdcd8]">
+          <div className="md:col-span-7 flex items-center gap-2">
+            <span className="text-xs font-bold text-[#555552] whitespace-nowrap flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5 text-[#e11d2e]" /> Filtro de jugador:
+            </span>
+            <input
+              type="text"
+              value={textoFiltro}
+              onChange={(e) => setTextoFiltro(e.target.value)}
+              placeholder="Filtrar por DNI o Apellidos de jugador..."
+              className="flex-1 text-xs py-1.5 px-3 bg-white text-[#1a1a1a] border border-[#dcdcd8] rounded"
+            />
+            {textoFiltro && (
+              <button
+                onClick={() => setTextoFiltro('')}
+                className="text-xs text-[#e11d2e] hover:underline font-bold px-1.5 py-1 bg-white border border-[#dcdcd8] rounded"
+                title="Limpiar filtro"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {textoFiltro && (
+            <div className="md:col-span-5 text-xs text-[#555552] italic">
+              Filtrando jugadores en tabla ({filteredJugadores.length} encontrados)
+            </div>
+          )}
         </div>
       </div>
 

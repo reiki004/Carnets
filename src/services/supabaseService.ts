@@ -38,6 +38,7 @@ export interface Administrativo {
   Tipo: string;
   ClubCargo: string;
   Categoria?: string | null;
+  Terna?: string | null;
   Estado?: string | null;
   FechaNacimiento: string | null;
   FotoArchivo: string | null;
@@ -131,6 +132,7 @@ export function adminRowToJs(row: any): Administrativo {
     Tipo: row.tipo || 'Administrativo',
     ClubCargo: row.club_cargo || '',
     Categoria: row.categoria || null,
+    Terna: row.terna || row.categoria || null,
     Estado: row.estado || null,
     FechaNacimiento: row.fecha_nacimiento || null,
     FotoArchivo: row.foto_url || null,
@@ -139,19 +141,101 @@ export function adminRowToJs(row: any): Administrativo {
 }
 
 export function adminJsToRow(o: Administrativo): any {
-  return {
+  const row: any = {
     numero_documento: o.NumeroDocumento,
     tipo_documento: o.TipoDocumento || 'DNI',
     apellidos: o.Apellidos,
     nombres: o.Nombres,
     tipo: o.Tipo || 'Administrativo',
     club_cargo: o.ClubCargo,
-    categoria: o.Categoria || null,
+    categoria: o.Terna || o.Categoria || null,
     estado: o.Estado || null,
     fecha_nacimiento: o.FechaNacimiento || null,
     foto_url: o.FotoArchivo || null,
     logo_url: o.LogoArchivo || null,
   };
+  return row;
+}
+
+const LOCAL_TERNAS_KEY = 'interclubes_ternas_cache';
+
+export async function fetchTernasSupabase(): Promise<string[]> {
+  const set = new Set<string>();
+
+  // 1. Intentar cargar desde tabla dedicada 'ternas' si existe en Supabase
+  try {
+    const { data, error } = await sb.from('ternas').select('terna').order('terna');
+    if (!error && data && data.length > 0) {
+      data.forEach((r: any) => {
+        const val = String(r.terna || '').trim().toUpperCase();
+        if (val) set.add(val);
+      });
+    }
+  } catch (err) {}
+
+  // 2. Cargar ternas ya registradas en la columna categoria de la tabla administrativos
+  try {
+    const { data: admData } = await sb
+      .from('administrativos')
+      .select('categoria')
+      .not('categoria', 'is', null)
+      .limit(100);
+    if (admData) {
+      admData.forEach((r: any) => {
+        const val = String(r.categoria || '').trim().toUpperCase();
+        if (val) set.add(val);
+      });
+    }
+  } catch (err) {}
+
+  // 3. Cargar desde localStorage
+  const saved = localStorage.getItem(LOCAL_TERNAS_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item: any) => {
+          const val = String(item || '').trim().toUpperCase();
+          if (val) set.add(val);
+        });
+      }
+    } catch {}
+  }
+
+  // Valores predeterminados si aún no hay ninguna
+  if (set.size === 0) {
+    ['TERNA 1', 'TERNA 2', 'TERNA 3'].forEach((t) => set.add(t));
+  }
+
+  const list = Array.from(set).sort();
+  localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(list));
+  return list;
+}
+
+export async function insertTernaSupabase(ternaName: string): Promise<void> {
+  const t = ternaName.trim().toUpperCase();
+  if (!t) return;
+
+  try {
+    await sb.from('ternas').insert([{ terna: t }]);
+  } catch (err) {}
+
+  const current = await fetchTernasSupabase();
+  if (!current.includes(t)) {
+    const next = [...current, t].sort();
+    localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(next));
+  }
+}
+
+export async function deleteTernaSupabase(ternaName: string): Promise<void> {
+  const t = ternaName.trim().toUpperCase();
+  try {
+    await sb.from('ternas').delete().eq('terna', t);
+  } catch (err) {}
+
+  const current = await fetchTernasSupabase();
+  const next = current.filter((item) => item !== t);
+  localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(next));
 }
 
 /**

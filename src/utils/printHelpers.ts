@@ -172,8 +172,12 @@ export const printCardDirectly = async (
               <div class="b-field">DNI: ${card.dni || '00000000'}</div>
             </div>
             ${
-              card.showCategoria && card.categoria
-                ? `<div class="b-categoria">${card.categoria.toUpperCase()}</div>`
+              card.showCategoria && (card.terna || card.categoria)
+                ? `<div class="b-categoria">${
+                    card.tipo === 'admin'
+                      ? `Terna: ${(card.terna || card.categoria || '').replace(/^terna:\s*/i, '').trim().toUpperCase()}`
+                      : (card.categoria || '').toUpperCase()
+                  }</div>`
                 : ''
             }
             <img class="b-bottom" src="${card.backBottomUrl || DEFAULTS.backbottom}" alt="" />
@@ -497,8 +501,12 @@ export const printMultipleCardsDirectly = async (cards: CardState[]): Promise<vo
               <div class="b-field">DNI: ${c.dni || '00000000'}</div>
             </div>
             ${
-              c.showCategoria && c.categoria
-                ? `<div class="b-categoria">${c.categoria.toUpperCase()}</div>`
+              c.showCategoria && (c.terna || c.categoria)
+                ? `<div class="b-categoria">${
+                    c.tipo === 'admin'
+                      ? `Terna: ${(c.terna || c.categoria || '').replace(/^terna:\s*/i, '').trim().toUpperCase()}`
+                      : (c.categoria || '').toUpperCase()
+                  }</div>`
                 : ''
             }
             <img class="b-bottom" src="${c.backBottomUrl || DEFAULTS.backbottom}" alt="" />

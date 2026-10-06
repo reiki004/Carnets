@@ -16,6 +16,45 @@
   <body class="bg-[#e9e9e6] text-[#1a1a1a] antialiased selection:bg-[#e11d2e] selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (function() {
+        function removeNetlifyBadge() {
+          try {
+            var selectors = [
+              'a[href*="netlify"]',
+              '[class*="netlify"]',
+              '[id*="netlify"]',
+              '[data-netlify-badge]',
+              'iframe[src*="netlify"]',
+              'iframe[title*="Netlify"]'
+            ];
+            document.querySelectorAll(selectors.join(',')).forEach(function(el) {
+              el.remove();
+            });
+            var all = document.querySelectorAll('body *');
+            for (var i = 0; i < all.length; i++) {
+              var el = all[i];
+              if (el.childNodes.length <= 3 && el.textContent && el.textContent.toLowerCase().includes('powered by netlify')) {
+                var target = el.closest('a') || el.closest('div[style*="fixed"]') || el;
+                target.remove();
+              }
+            }
+          } catch(e) {}
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', removeNetlifyBadge);
+        } else {
+          removeNetlifyBadge();
+        }
+        if (window.MutationObserver) {
+          var observer = new MutationObserver(function() {
+            removeNetlifyBadge();
+          });
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+        setInterval(removeNetlifyBadge, 1000);
+      })();
+    </script>
   </body>
 </html>
 

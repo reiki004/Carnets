@@ -7,6 +7,7 @@ import {
   EstadoPie,
   CargoPie,
   clubRowToJs,
+  fetchTernasSupabase,
 } from './services/supabaseService';
 import { DEFAULTS } from './assets/cardAssets';
 import { CardState, DEFAULT_CARD_STATE } from './components/CardPreview';
@@ -34,6 +35,7 @@ export default function App() {
   // Estados cargados desde Supabase
   const [clubes, setClubes] = useState<Club[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
+  const [ternas, setTernas] = useState<string[]>([]);
   const [estadosCache, setEstadosCache] = useState<EstadoPie[]>([]);
   const [cargosCache, setCargosCache] = useState<CargoPie[]>([]);
 
@@ -95,10 +97,20 @@ export default function App() {
     }
   };
 
+  const loadTernas = async () => {
+    try {
+      const list = await fetchTernasSupabase();
+      setTernas(list);
+    } catch (err) {
+      console.warn('Error al cargar ternas:', err);
+    }
+  };
+
   useEffect(() => {
     refreshClubes();
     loadCategorias();
     loadEstadosCargos();
+    loadTernas();
   }, []);
 
   // Navegación entre pantallas
@@ -298,10 +310,11 @@ export default function App() {
           />
         )}
 
-        {/* PANTALLA 4: ADMIN (DIRECTIVOS Y ADMINISTRATIVOS) */}
+        {/* PANTALLA 4: ADMIN (ÁRBITROS Y DIRECTIVOS) */}
         {activeScreen === 'admin' && (
           <ScreenAdmin
             cargosCache={cargosCache}
+            ternas={ternas}
             onOpenCardModal={handleOpenCardModal}
           />
         )}
@@ -311,6 +324,8 @@ export default function App() {
           <ScreenConfig
             clubes={clubes}
             categorias={categorias}
+            ternas={ternas}
+            loadTernas={loadTernas}
             estadosCache={estadosCache}
             cargosCache={cargosCache}
             refreshClubes={refreshClubes}

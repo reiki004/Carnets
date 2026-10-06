@@ -22,6 +22,7 @@ export interface CardState {
   fnac: string;
   dni: string;
   categoria?: string;
+  terna?: string;
   showCategoria?: boolean;
   backTopUrl: string;
   backBottomUrl: string;
@@ -44,6 +45,7 @@ export const DEFAULT_CARD_STATE: CardState = {
   fnac: 'dd/mm/aaaa',
   dni: '00000000',
   categoria: '',
+  terna: '',
   showCategoria: false,
   backTopUrl: DEFAULTS.backtop,
   backBottomUrl: DEFAULTS.backbottom,
@@ -338,14 +340,16 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
               </div>
             </div>
 
-            {/* Categoría opcional arriba de la imagen de redes sociales */}
-            {card.showCategoria && card.categoria && (
+            {/* Categoría o Terna arbitral arriba de la imagen de redes sociales */}
+            {card.showCategoria && (card.terna || card.categoria) && (
               <div
                 className="b-categoria"
                 id="txtCategoriaBack"
                 style={{ fontFamily: 'Arial, "Arial", Arimo, "Helvetica Neue", Helvetica, sans-serif' }}
               >
-                {card.categoria.toUpperCase()}
+                {isAdmin
+                  ? `Terna: ${(card.terna || card.categoria || '').replace(/^terna:\s*/i, '').trim().toUpperCase()}`
+                  : (card.categoria || '').toUpperCase()}
               </div>
             )}
 
@@ -481,7 +485,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
             />
           </div>
 
-          {/* Checkbox para mostrar la categoría en el carnet (Desactivado por defecto) */}
+          {/* Checkbox para mostrar la categoría o terna en el carnet (Desactivado por defecto) */}
           <div className="pt-2 border-t border-[#f0f0ed] flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs font-bold text-[#1a1a1a] cursor-pointer select-none">
               <input
@@ -493,15 +497,19 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                 }}
                 className="accent-[#e11d2e] w-4 h-4 rounded cursor-pointer"
               />
-              <span>Imprimir categoría en el dorso</span>
+              <span>
+                {isAdmin ? 'Imprimir terna arbitral en el dorso' : 'Imprimir categoría en el dorso'}
+              </span>
             </label>
-            {card.categoria ? (
+            {(card.terna || card.categoria) ? (
               <span className="font-mono text-[11px] font-bold text-[#1a1a1a] bg-[#e9e9e6] px-2 py-0.5 rounded border border-[#dcdcd8]">
-                {card.categoria.toUpperCase()}
+                {isAdmin
+                  ? `Terna: ${(card.terna || card.categoria || '').replace(/^terna:\s*/i, '').trim().toUpperCase()}`
+                  : (card.categoria || '').toUpperCase()}
               </span>
             ) : (
               <span className="text-[10px] text-[#888884] italic">
-                (Sin categoría asignada)
+                {isAdmin ? '(Sin terna asignada)' : '(Sin categoría asignada)'}
               </span>
             )}
           </div>

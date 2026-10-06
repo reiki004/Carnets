@@ -4,6 +4,8 @@ import {
   Club,
   clubJsToRow,
   subirImagenSupabase,
+  insertTernaSupabase,
+  deleteTernaSupabase,
   SUPABASE_URL,
 } from '../services/supabaseService';
 import { DEFAULTS } from '../assets/cardAssets';
@@ -14,6 +16,7 @@ import {
   Layers,
   Palette,
   Briefcase,
+  Scale,
   Sliders,
   Upload,
   Plus,
@@ -26,6 +29,8 @@ import {
 interface ScreenConfigProps {
   clubes: Club[];
   categorias: string[];
+  ternas?: string[];
+  loadTernas?: () => Promise<void>;
   estadosCache: any[];
   cargosCache: any[];
   refreshClubes: () => Promise<void>;
@@ -38,6 +43,8 @@ interface ScreenConfigProps {
 export const ScreenConfig: React.FC<ScreenConfigProps> = ({
   clubes,
   categorias,
+  ternas = [],
+  loadTernas,
   estadosCache,
   cargosCache,
   refreshClubes,
@@ -60,6 +67,10 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
 
   // Categorías
   const [nuevaCategoria, setNuevaCategoria] = useState('');
+
+  // Ternas arbitrales
+  const [nuevaTerna, setNuevaTerna] = useState('');
+  const [ternaStatus, setTernaStatus] = useState<{ msg: string; kind: 'ok' | 'err' | '' }>({ msg: '', kind: '' });
 
   // Cargos
   const [nuevoCargo, setNuevoCargo] = useState('');
@@ -201,6 +212,31 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
     if (!confirm(`¿Eliminar la categoría "${cat}"?`)) return;
     await sb.from('categorias').delete().eq('categoria', cat);
     await loadCategorias();
+  };
+
+  // Ternas arbitrales
+  const handleAddTerna = async () => {
+    const val = nuevaTerna.trim().toUpperCase();
+    if (!val) return;
+    try {
+      await insertTernaSupabase(val);
+      setNuevaTerna('');
+      if (loadTernas) await loadTernas();
+      setTernaStatus({ msg: `Terna "${val}" agregada exitosamente.`, kind: 'ok' });
+    } catch (err: any) {
+      setTernaStatus({ msg: 'Error al agregar terna: ' + err.message, kind: 'err' });
+    }
+  };
+
+  const handleDeleteTerna = async (t: string) => {
+    if (!confirm(`¿Eliminar la terna "${t}"?`)) return;
+    try {
+      await deleteTernaSupabase(t);
+      if (loadTernas) await loadTernas();
+      setTernaStatus({ msg: `Terna "${t}" eliminada.`, kind: 'ok' });
+    } catch (err: any) {
+      setTernaStatus({ msg: 'Error al eliminar terna: ' + err.message, kind: 'err' });
+    }
   };
 
   // Cargos
@@ -437,6 +473,48 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ================= SECCIÓN 5: TERNAS ARBITRALES ================= */}
+      <div className="group m-0 p-0 border-b border-[#dcdcd8] pb-5" id="seccion-ternas">
+        <span className="side-tag jug flex items-center gap-1 w-max">
+          <Scale className="w-3.5 h-3.5" /> Ternas arbitrales
+        </span>
+        <div className="hint mt-1 mb-2 text-[#555552]">
+          Crea nuevas ternas arbitrales para agrupar y asignar a los árbitros.
+        </div>
+        <div className="file-row mt-2">
+          <input
+            type="text"
+            value={nuevaTerna}
+            onChange={(e) => setNuevaTerna(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddTerna()}
+            placeholder="Ej. TERNA 1"
+            className="flex-1"
+          />
+          <button onClick={handleAddTerna} className="file-btn alt text-xs font-bold">
+            <Plus className="w-3.5 h-3.5" /> Agregar terna
+          </button>
+        </div>
+        <div className="chip-list mt-2">
+          {(ternas || []).map((t) => (
+            <span key={t} className="chip">
+              {t}
+              <span
+                className="x"
+                title="Eliminar terna"
+                onClick={() => handleDeleteTerna(t)}
+              >
+                ✕
+              </span>
+            </span>
+          ))}
+        </div>
+        {ternaStatus.msg && (
+          <div className={`db-status ${ternaStatus.kind} mt-2 text-xs`}>
+            {ternaStatus.msg}
+          </div>
+        )}
       </div>
 
       {/* Input oculto para subida de diseño de pie */}
