@@ -76,6 +76,89 @@ export function normalizarEstado(est: string | null | undefined): string {
   return s || 'SOCIO';
 }
 
+export function normalizarTipoDoc(tipo: any): string {
+  const s = String(tipo || 'DNI').trim();
+  const lower = s.toLowerCase();
+  if (
+    lower.includes('extranj') ||
+    lower === 'ce' ||
+    lower === 'c.e.' ||
+    lower === 'c.e' ||
+    s.toUpperCase() === 'CE'
+  ) {
+    return 'CE';
+  }
+  if (lower === 'pasaporte') return 'Pasaporte';
+  return s || 'DNI';
+}
+
+export function extraerDniDeNombre(fileName: string): string {
+  const sinExt = fileName.replace(/\.[^.]+$/, '').trim();
+  // 1. Busca secuencia de exactamente 8 dígitos seguidos (DNI estándar)
+  const match8 = sinExt.match(/\b\d{8}\b/) || sinExt.match(/\d{8}/);
+  if (match8) return match8[0];
+  // 2. Busca entre 6 y 12 dígitos
+  const matchDigits = sinExt.match(/\d{6,12}/);
+  if (matchDigits) return matchDigits[0];
+  // 3. Fallback: remover caracteres especiales y espacios
+  return sinExt.replace(/[^A-Za-z0-9]/g, '').trim();
+}
+
+export interface CoincidenciaFotoDoc {
+  row: any;
+  exactDoc: string;
+  nombreCompleto: string;
+  tabla: 'jugadores' | 'administrativos';
+  clubId?: string | null;
+}
+
+export function encontrarCoincidenciaDoc(
+  fileName: string,
+  dbRows: any[]
+): CoincidenciaFotoDoc | null {
+  const sinExt = fileName.replace(/\.[^.]+$/, '').trim();
+  const rawDigits = sinExt.replace(/\D/g, '');
+  const extracted = extraerDniDeNombre(fileName);
+
+  for (const row of dbRows) {
+    const dbDoc = String(row.numero_documento || row.NumeroDocumento || '').trim();
+    if (!dbDoc) continue;
+    const dbDigits = dbDoc.replace(/\D/g, '');
+    const nombreCompleto = `${row.apellidos || row.Apellidos || ''} ${row.nombres || row.Nombres || ''}`.trim();
+    const tabla: 'jugadores' | 'administrativos' =
+      row.__tabla || (row.club_cargo !== undefined || row.ClubCargo !== undefined || row.tipo === 'Administrativo' ? 'administrativos' : 'jugadores');
+    const clubId = row.club_id || row.ClubID || null;
+
+    // 1. Coincidencia exacta de texto (ej. "45724229" o "08749999")
+    if (sinExt.toLowerCase() === dbDoc.toLowerCase()) {
+      return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
+    }
+    // 2. Coincidencia exacta de dígitos
+    if (rawDigits && rawDigits === dbDigits) {
+      return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
+    }
+    // 3. Coincidencia mediante extraerDniDeNombre
+    if (extracted && (extracted.toLowerCase() === dbDoc.toLowerCase() || extracted === dbDigits)) {
+      return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
+    }
+    // 4. Coincidencia ignorando ceros a la izquierda (ej. "7557840" con "07557840")
+    const strip0Db = dbDigits.replace(/^0+/, '');
+    const strip0File = rawDigits.replace(/^0+/, '');
+    if (strip0Db && strip0Db === strip0File) {
+      return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
+    }
+    // 5. Coincidencia rellenando a 8 dígitos con ceros a la izquierda
+    if (rawDigits.length > 0 && rawDigits.padStart(8, '0') === dbDigits.padStart(8, '0')) {
+      return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
+    }
+    // 6. Subcadena en el nombre del archivo (ej. "FOTO_DNI_45724229_2024.jpg")
+    if (dbDigits.length >= 6 && sinExt.includes(dbDigits)) {
+      return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
+    }
+  }
+  return null;
+}
+
 // Convertidores entre snake_case de Supabase y CamelCase usado en la UI
 export function clubRowToJs(row: any): Club {
   return {
@@ -96,7 +179,7 @@ export function clubJsToRow(o: Club): any {
 export function jugadorRowToJs(row: any): Jugador {
   return {
     NumeroDocumento: String(row.numero_documento || ''),
-    TipoDocumento: row.tipo_documento || 'DNI',
+    TipoDocumento: normalizarTipoDoc(row.tipo_documento),
     Apellidos: row.apellidos || '',
     Nombres: row.nombres || '',
     FechaNacimiento: row.fecha_nacimiento || null,
@@ -111,7 +194,7 @@ export function jugadorRowToJs(row: any): Jugador {
 export function jugadorJsToRow(o: Jugador): any {
   return {
     numero_documento: o.NumeroDocumento,
-    tipo_documento: o.TipoDocumento || 'DNI',
+    tipo_documento: normalizarTipoDoc(o.TipoDocumento),
     apellidos: o.Apellidos,
     nombres: o.Nombres,
     fecha_nacimiento: o.FechaNacimiento || null,
@@ -126,7 +209,7 @@ export function jugadorJsToRow(o: Jugador): any {
 export function adminRowToJs(row: any): Administrativo {
   return {
     NumeroDocumento: String(row.numero_documento || ''),
-    TipoDocumento: row.tipo_documento || 'DNI',
+    TipoDocumento: normalizarTipoDoc(row.tipo_documento),
     Apellidos: row.apellidos || '',
     Nombres: row.nombres || '',
     Tipo: row.tipo || 'Administrativo',
@@ -143,7 +226,7 @@ export function adminRowToJs(row: any): Administrativo {
 export function adminJsToRow(o: Administrativo): any {
   const row: any = {
     numero_documento: o.NumeroDocumento,
-    tipo_documento: o.TipoDocumento || 'DNI',
+    tipo_documento: normalizarTipoDoc(o.TipoDocumento),
     apellidos: o.Apellidos,
     nombres: o.Nombres,
     tipo: o.Tipo || 'Administrativo',
@@ -239,33 +322,137 @@ export async function deleteTernaSupabase(ternaName: string): Promise<void> {
 }
 
 /**
- * Sube una imagen en base64 al bucket de Supabase indicado
+ * Sube una imagen (base64 o File/Blob) al bucket de Supabase indicado
  */
 export async function subirImagenSupabase(
   bucket: string,
   path: string,
-  base64: string,
+  dataOrBase64: string | Blob | File,
   mimeType: string = 'image/jpeg'
 ): Promise<string> {
   try {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+    let body: BodyInit;
+    if (typeof dataOrBase64 === 'string') {
+      const cleanB64 = dataOrBase64.includes(',') ? dataOrBase64.split(',')[1] : dataOrBase64;
+      const sanitized = cleanB64.trim().replace(/\s/g, '');
+      const binary = atob(sanitized);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      body = bytes;
+    } else {
+      body = dataOrBase64;
     }
-    const { error } = await sb.storage.from(bucket).upload(path, bytes, {
+
+    const { error } = await sb.storage.from(bucket).upload(path, body, {
       contentType: mimeType,
       upsert: true,
     });
     if (error) {
-      console.warn('Supabase storage upload warning:', error);
-      // Fallback a dataUrl en caso de política de bucket o modo sin permisos de escritura directos
-      return `data:${mimeType};base64,${base64}`;
+      console.error(`Error de Supabase storage al subir ${path}:`, error);
+      throw error;
     }
+
     const { data } = sb.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
-  } catch (err) {
-    console.warn('Error subiendo imagen a Supabase, usando respaldo local:', err);
-    return `data:${mimeType};base64,${base64}`;
+    // Añadir timestamp para evitar que la caché del navegador retenga fotos viejas
+    return `${data.publicUrl}?t=${Date.now()}`;
+  } catch (err: any) {
+    console.error('Error subiendo imagen a Supabase Storage:', err);
+    throw err;
   }
+}
+
+/**
+ * Obtiene todos los jugadores y administrativos registrados para emparejamiento inteligente de fotos
+ */
+export async function obtenerTodosParaFotos(): Promise<Array<{
+  numero_documento: string;
+  apellidos: string;
+  nombres: string;
+  club_id?: string | null;
+  club_cargo?: string | null;
+  foto_url?: string | null;
+  __tabla: 'jugadores' | 'administrativos';
+}>> {
+  const [resJug, resAdm] = await Promise.all([
+    sb.from('jugadores').select('numero_documento, apellidos, nombres, club_id, foto_url').limit(5000),
+    sb.from('administrativos').select('numero_documento, apellidos, nombres, club_cargo, foto_url').limit(1000),
+  ]);
+
+  const jugList = (resJug.data || []).map((j: any) => ({
+    numero_documento: String(j.numero_documento || '').trim(),
+    apellidos: String(j.apellidos || '').trim(),
+    nombres: String(j.nombres || '').trim(),
+    club_id: j.club_id || null,
+    foto_url: j.foto_url || null,
+    __tabla: 'jugadores' as const,
+  }));
+
+  const admList = (resAdm.data || []).map((a: any) => ({
+    numero_documento: String(a.numero_documento || '').trim(),
+    apellidos: String(a.apellidos || '').trim(),
+    nombres: String(a.nombres || '').trim(),
+    club_cargo: a.club_cargo || null,
+    foto_url: a.foto_url || null,
+    __tabla: 'administrativos' as const,
+  }));
+
+  return [...jugList, ...admList];
+}
+
+/**
+ * Sube una foto a Supabase Storage y actualiza la fila correspondiente en la base de datos
+ */
+export async function subirYEnlazarFoto(
+  file: File,
+  exactDoc: string,
+  tabla: 'jugadores' | 'administrativos'
+): Promise<string> {
+  const path = tabla === 'administrativos' ? `${exactDoc}_admin.jpg` : `${exactDoc}.jpg`;
+  const mime = file.type || 'image/jpeg';
+
+  // 1. Subir directamente el File/Blob a Supabase Storage (rápido y sin base64 intermedio)
+  const pubUrl = await subirImagenSupabase('fotos', path, file, mime);
+
+  // 2. Actualizar la base de datos
+  let { data, error } = await sb
+    .from(tabla)
+    .update({ foto_url: pubUrl })
+    .eq('numero_documento', exactDoc)
+    .select('numero_documento, foto_url');
+
+  if (error) {
+    console.error(`Error actualizando base de datos para ${exactDoc}:`, error);
+    throw error;
+  }
+
+  // Si no afectó ninguna fila, intentar variaciones con o sin ceros a la izquierda
+  if (!data || data.length === 0) {
+    const stripDoc = exactDoc.replace(/^0+/, '');
+    if (stripDoc && stripDoc !== exactDoc) {
+      const res2 = await sb
+        .from(tabla)
+        .update({ foto_url: pubUrl })
+        .eq('numero_documento', stripDoc)
+        .select('numero_documento, foto_url');
+      if (res2.data && res2.data.length > 0) {
+        data = res2.data;
+      }
+    }
+
+    const pad8Doc = exactDoc.padStart(8, '0');
+    if ((!data || data.length === 0) && pad8Doc !== exactDoc) {
+      const res3 = await sb
+        .from(tabla)
+        .update({ foto_url: pubUrl })
+        .eq('numero_documento', pad8Doc)
+        .select('numero_documento, foto_url');
+      if (res3.data && res3.data.length > 0) {
+        data = res3.data;
+      }
+    }
+  }
+
+  return pubUrl;
 }

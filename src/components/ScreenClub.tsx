@@ -7,8 +7,12 @@ import {
   jugadorRowToJs,
   jugadorJsToRow,
   subirImagenSupabase,
+  obtenerTodosParaFotos,
+  subirYEnlazarFoto,
   ESTADOS_FIJOS,
   normalizarEstado,
+  normalizarTipoDoc,
+  encontrarCoincidenciaDoc,
 } from '../services/supabaseService';
 import { DEFAULTS } from '../assets/cardAssets';
 import { CardState } from './CardPreview';
@@ -31,6 +35,7 @@ import {
   Shield,
   Save,
   Search,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface ScreenClubProps {
@@ -107,9 +112,11 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     kind: '',
   });
 
+  const [autoSubirFotos, setAutoSubirFotos] = useState(true);
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const carpetaFotosInputRef = useRef<HTMLInputElement>(null);
+  const archivosFotosInputRef = useRef<HTMLInputElement>(null);
 
   function esNombreValido(str: string): boolean {
     return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/.test(str.trim()) && str.trim().length > 0;
@@ -469,16 +476,21 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
       const parsed = rows
-        .map((row) => ({
-          TipoDocumento: String(row.TipoDocumento || 'DNI').trim() || 'DNI',
-          NumeroDocumento: String(row.NumeroDocumento || '').trim(),
-          Apellidos: String(row.Apellidos || '').trim(),
-          Nombres: String(row.Nombres || '').trim(),
-          FechaNacimiento: normalizarFechaIso(row.FechaNacimiento) || '',
-          Club: String(row.Club || '').trim(),
-          Categoria: String(row.Categoria || '').trim(),
-          Estado: normalizarEstado(row.Estado),
-        }))
+        .map((row) => {
+          const rawClub = String(row.Club === null || row.Club === undefined ? '' : row.Club).trim();
+          const rawCat = String(row.Categoria === null || row.Categoria === undefined ? '' : row.Categoria).trim();
+          const rawEst = String(row.Estado === null || row.Estado === undefined ? '' : row.Estado).trim();
+          return {
+            TipoDocumento: normalizarTipoDoc(row.TipoDocumento),
+            NumeroDocumento: String(row.NumeroDocumento || '').trim(),
+            Apellidos: String(row.Apellidos || '').trim(),
+            Nombres: String(row.Nombres || '').trim(),
+            FechaNacimiento: normalizarFechaIso(row.FechaNacimiento) || '',
+            Club: rawClub,
+            Categoria: rawCat,
+            Estado: rawEst,
+          };
+        })
         .filter((r) => r.NumeroDocumento);
 
       if (!parsed.length) {
@@ -495,25 +507,44 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
         if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos');
         if (!r.FechaNacimiento) motivos.push('fecha de nacimiento inválida (use formato DD/MM/AAAA o fecha estándar)');
 
-        const clubEncontrado = clubes.find(
-          (c) => c.NombreClub.toUpperCase() === r.Club.toUpperCase()
-        );
-        if (!clubEncontrado) motivos.push(`el club "${r.Club}" no existe en el sistema`);
+        // Validación estricta: Club no puede ser NULL ni blanco, y debe existir
+        let clubEncontrado = null;
+        if (!r.Club) {
+          motivos.push('el campo Club es obligatorio (no se permite vacío ni NULL)');
+        } else {
+          clubEncontrado = clubes.find(
+            (c) => c.NombreClub.trim().toUpperCase() === r.Club.toUpperCase()
+          );
+          if (!clubEncontrado) motivos.push(`el club "${r.Club}" no existe en el sistema`);
+        }
 
-        const catEncontrada = categorias.find(
-          (c) => c.toUpperCase() === r.Categoria.toUpperCase()
-        );
-        if (!catEncontrada) motivos.push(`la categoría "${r.Categoria}" no existe`);
+        // Validación estricta: Categoría no puede ser NULL ni blanca, y debe existir
+        let catEncontrada = null;
+        if (!r.Categoria) {
+          motivos.push('el campo Categoría es obligatorio (no se permite vacío ni NULL)');
+        } else {
+          catEncontrada = categorias.find(
+            (c) => c.trim().toUpperCase() === r.Categoria.toUpperCase()
+          );
+          if (!catEncontrada) motivos.push(`la categoría "${r.Categoria}" no existe`);
+        }
 
-        const estNormal = normalizarEstado(r.Estado);
-        const estEncontrado = ESTADOS_FIJOS.find((s) => s === estNormal);
-        if (!estEncontrado) motivos.push(`el estado "${r.Estado}" no existe`);
+        // Validación estricta: Estado no puede ser NULL ni blanco, y debe existir
+        let estEncontrado = null;
+        let estNormal = '';
+        if (!r.Estado) {
+          motivos.push('el campo Estado es obligatorio (no se permite vacío ni NULL)');
+        } else {
+          estNormal = normalizarEstado(r.Estado);
+          estEncontrado = ESTADOS_FIJOS.find((s) => s.toUpperCase() === estNormal.toUpperCase());
+          if (!estEncontrado) motivos.push(`el estado "${r.Estado}" no existe`);
+        }
 
         return {
           ...r,
           __clubId: clubEncontrado ? clubEncontrado.ClubID : null,
           __categoriaResuelta: catEncontrada || null,
-          __estadoResuelto: estNormal || 'SOCIO',
+          __estadoResuelto: estEncontrado || estNormal || 'SOCIO',
           __isDup: existingDocs.includes(r.NumeroDocumento),
           __motivos: motivos,
           __valid: motivos.length === 0,
@@ -521,11 +552,13 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       });
 
       setImportRows(validated);
-      // Por requerimiento: al subir un archivo de Excel, todos quedan con el check activado
-      setExcelCheckedIndices(validated.map((_, idx) => idx));
+      // Por requerimiento: marcar por defecto las filas que sean válidas
+      setExcelCheckedIndices(
+        validated.map((v, idx) => (v.__valid ? idx : -1)).filter((idx) => idx !== -1)
+      );
       const invalidos = validated.filter((r) => !r.__valid).length;
       setImportStatus({
-        msg: `${validated.length} fila(s) leída(s)${invalidos ? `, ${invalidos} con errores` : ''}.`,
+        msg: `${validated.length} fila(s) leída(s)${invalidos ? `, ${invalidos} con errores (campos obligatorios vacíos o no existentes)` : ''}.`,
         kind: invalidos ? 'err' : 'ok',
       });
     } catch (err: any) {
@@ -553,10 +586,18 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       return;
     }
     const seleccionados = importRows.filter((_, idx) => excelCheckedIndices.includes(idx));
+    const validos = seleccionados.filter((r) => r.__valid);
+    if (!validos.length) {
+      setImportStatus({
+        msg: 'No hay filas válidas marcadas para importar. Corrija los errores (Club, Categoría y Estado no pueden ser blancos/NULL y deben existir).',
+        kind: 'err',
+      });
+      return;
+    }
 
-    setImportStatus({ msg: 'Importando jugadores…', kind: 'loading' });
+    setImportStatus({ msg: `Importando ${validos.length} jugadores válidos…`, kind: 'loading' });
     try {
-      const payload = seleccionados.map((r) =>
+      const payload = validos.map((r) =>
         jugadorJsToRow({
           TipoDocumento: r.TipoDocumento,
           NumeroDocumento: r.NumeroDocumento,
@@ -580,94 +621,152 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       setImportRows([]);
       setExcelCheckedIndices([]);
       setExcelName('ningún archivo elegido');
-      setImportStatus({ msg: `¡${seleccionados.length} jugadores importados exitosamente!`, kind: 'ok' });
+      setImportStatus({ msg: `¡${validos.length} jugadores importados exitosamente!`, kind: 'ok' });
       loadJugadores();
     } catch (err: any) {
       setImportStatus({ msg: 'Error al importar: ' + err.message, kind: 'err' });
     }
   };
 
-  // Fotos masivas
-  const handleCarpetaFotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter((f) =>
+  // Carga y procesamiento masivo de fotos (Archivos individuales o Carpeta)
+  const procesarArchivosFotos = async (incomingFiles: File[]) => {
+    const files = incomingFiles.filter((f) =>
       /\.(jpe?g|png|webp)$/i.test(f.name)
     );
-    setFotosName(files.length ? `${files.length} archivo(s)` : 'ninguna');
-    if (!files.length) return;
+    setFotosName(files.length ? `${files.length} archivo(s) seleccionado(s)` : 'ninguna');
+    if (!files.length) {
+      setFotosStatus({ msg: 'No se encontraron imágenes válidas (JPG, PNG o WebP).', kind: 'err' });
+      return;
+    }
 
-    setFotosStatus({ msg: 'Verificando con la base de datos…', kind: 'loading' });
-    const docs = files.map((f) => f.name.replace(/\.[^.]+$/, '').trim());
+    setFotosStatus({ msg: 'Verificando fotos con la base de datos de Supabase…', kind: 'loading' });
 
     try {
-      const { data: rows } = await sb.from(fotosMasivasTipo).select('numero_documento').in('numero_documento', docs);
-      const existing = (rows || []).map((r: any) => String(r.numero_documento));
+      // Obtener todos los registros (jugadores y árbitros) para cotejo inteligente
+      const todosLosRegistros = await obtenerTodosParaFotos();
 
       const parsed = files.map((f) => {
-        const doc = f.name.replace(/\.[^.]+$/, '').trim();
+        const match = encontrarCoincidenciaDoc(f.name, todosLosRegistros);
+        const previewUrl = URL.createObjectURL(f);
         return {
           file: f,
-          doc,
-          matched: existing.includes(doc),
+          fileName: f.name,
+          previewUrl,
+          doc: match ? match.exactDoc : f.name.replace(/\.[^.]+$/, '').trim(),
+          matched: !!match,
+          checked: !!match,
+          tabla: match ? match.tabla : (fotosMasivasTipo as 'jugadores' | 'administrativos'),
+          matchedPerson: match
+            ? {
+                exactDoc: match.exactDoc,
+                nombreCompleto: match.nombreCompleto,
+                tabla: match.tabla,
+              }
+            : undefined,
         };
       });
 
       setFotosParsed(parsed);
       const coincidentes = parsed.filter((p) => p.matched).length;
+
+      if (coincidentes === 0) {
+        setFotosStatus({
+          msg: `0 de ${files.length} fotos coinciden con el DNI de personas registradas. Revisa que el nombre de cada foto sea el número de documento.`,
+          kind: 'err',
+        });
+        return;
+      }
+
       setFotosStatus({
-        msg: `${coincidentes} de ${files.length} fotos coinciden con documentos en la base.`,
-        kind: coincidentes ? 'ok' : 'err',
+        msg: `${coincidentes} de ${files.length} fotos coinciden. ${autoSubirFotos ? 'Iniciando subida automática a Supabase…' : 'Listas para subir.'}`,
+        kind: 'ok',
       });
+
+      if (autoSubirFotos && coincidentes > 0) {
+        await ejecutarSubidaFotos(parsed.filter((p) => p.checked && p.matched));
+      }
     } catch (err: any) {
       setFotosStatus({ msg: 'Error al verificar fotos: ' + err.message, kind: 'err' });
     }
   };
 
-  const handleConfirmFotos = async () => {
-    const checks = Array.from(document.querySelectorAll<HTMLInputElement>('.fotoChk:checked'));
-    if (!checks.length) {
-      setFotosStatus({ msg: 'No hay fotos seleccionadas para subir.', kind: 'err' });
+  const handleCarpetaFotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    procesarArchivosFotos(files);
+  };
+
+  const handleArchivosFotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    procesarArchivosFotos(files);
+  };
+
+  const handleToggleFotoCheck = (idx: number) => {
+    setFotosParsed((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, checked: !item.checked } : item))
+    );
+  };
+
+  const handleToggleAllFotos = (select: boolean) => {
+    setFotosParsed((prev) =>
+      prev.map((item) => (item.matched ? { ...item, checked: select } : item))
+    );
+  };
+
+  const ejecutarSubidaFotos = async (seleccionadas: any[]) => {
+    if (!seleccionadas.length) {
+      setFotosStatus({ msg: 'No hay fotos coincidentes seleccionadas para subir.', kind: 'err' });
       return;
     }
 
-    let ok = 0,
-      fail = 0;
-    for (let i = 0; i < checks.length; i++) {
-      const idx = parseInt(checks[i].dataset.idx || '0', 10);
-      const { file, doc } = fotosParsed[idx];
+    let ok = 0;
+    let fail = 0;
+    const uploadedDocs: { doc: string; url: string; tabla: string }[] = [];
+
+    for (let i = 0; i < seleccionadas.length; i++) {
+      const { file, doc, tabla } = seleccionadas[i];
       setFotosStatus({
-        msg: `Subiendo ${i + 1}/${checks.length}…`,
+        msg: `Subiendo a Supabase (${i + 1}/${seleccionadas.length}): ${file.name} [${doc}]…`,
         kind: 'loading',
       });
 
       try {
-        const reader = new FileReader();
-        const b64Promise = new Promise<{ b64: string; mime: string }>((resolve) => {
-          reader.onload = (ev) => {
-            const res = ev.target?.result as string;
-            const [meta, b64] = res.split(',');
-            resolve({ b64, mime: meta.match(/data:(.*);base64/)?.[1] || 'image/jpeg' });
-          };
-          reader.readAsDataURL(file);
-        });
-
-        const { b64, mime } = await b64Promise;
-        const path = fotosMasivasTipo === 'administrativos' ? `${doc}_admin.jpg` : `${doc}.jpg`;
-        const pubUrl = await subirImagenSupabase('fotos', path, b64, mime);
-
-        await sb.from(fotosMasivasTipo).update({ foto_url: pubUrl }).eq('numero_documento', doc);
+        // Subir directamente el File a Supabase Storage y actualizar la base de datos
+        const pubUrl = await subirYEnlazarFoto(file, doc, tabla || 'jugadores');
+        uploadedDocs.push({ doc, url: pubUrl, tabla: tabla || 'jugadores' });
         ok++;
       } catch (err) {
+        console.error('Error subiendo foto para doc ' + doc, err);
         fail++;
       }
     }
 
+    // Actualizar estado local de jugadores inmediatamente para que la vista previa del carnet y la nómina muestren la foto al instante
+    if (uploadedDocs.length > 0) {
+      const urlMap = new Map(uploadedDocs.map((u) => [u.doc, u.url]));
+      setJugadores((prev) =>
+        prev.map((j) => {
+          const directMatch = urlMap.get(j.NumeroDocumento);
+          if (directMatch) return { ...j, FotoArchivo: directMatch };
+          const noZeroMatch = urlMap.get(j.NumeroDocumento.replace(/^0+/, ''));
+          if (noZeroMatch) return { ...j, FotoArchivo: noZeroMatch };
+          return j;
+        })
+      );
+    }
+
     setFotosStatus({
-      msg: `Listo: ${ok} foto(s) subida(s), ${fail} con error.`,
-      kind: fail ? 'err' : 'ok',
+      msg: `¡Éxito! ${ok} foto(s) subida(s) a Supabase y enlazadas con los carnets${fail ? `, ${fail} con error` : ''}.`,
+      kind: fail && !ok ? 'err' : 'ok',
     });
-    setFotosParsed([]);
-    setFotosName('ninguna');
+
+    if (carpetaFotosInputRef.current) carpetaFotosInputRef.current.value = '';
+    if (archivosFotosInputRef.current) archivosFotosInputRef.current.value = '';
     if (selectedClubId) loadJugadores();
+  };
+
+  const handleConfirmFotos = async () => {
+    const seleccionadas = fotosParsed.filter((p) => p.checked && p.matched);
+    await ejecutarSubidaFotos(seleccionadas);
   };
 
   const filteredJugadores = useMemo(() => {
@@ -1013,7 +1112,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                     onChange={(e) => setTipoDoc(e.target.value)}
                   >
                     <option value="DNI">DNI</option>
-                    <option value="Carné de extranjería">Carné de extranjería</option>
+                    <option value="CE">CE</option>
                     <option value="Pasaporte">Pasaporte</option>
                   </select>
                 </div>
@@ -1275,67 +1374,149 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           {/* TAB 3: CARGA MASIVA DE FOTOS */}
           {activeTabRight === 'fotos' && (
             <div className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Subir fotos de:
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Carga de fotos de Jugadores y Árbitros
+                </span>
+                <label className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoSubirFotos}
+                    onChange={(e) => setAutoSubirFotos(e.target.checked)}
+                    className="accent-[#e11d2e] rounded w-3.5 h-3.5"
+                  />
+                  <span>Subir automáticamente</span>
                 </label>
-                <select
-                  value={fotosMasivasTipo}
-                  onChange={(e) => setFotosMasivasTipo(e.target.value as any)}
-                >
-                  <option value="jugadores">Jugadores</option>
-                  <option value="administrativos">Árbitros</option>
-                </select>
               </div>
 
-              <div className="file-row">
+              <div className="grid grid-cols-2 gap-2">
                 <button
+                  type="button"
                   onClick={() => carpetaFotosInputRef.current?.click()}
-                  className="file-btn alt text-xs"
+                  className="file-btn alt text-xs justify-center py-2"
+                  title="Seleccionar una carpeta completa del equipo o club"
                 >
-                  <FolderOpen className="w-3.5 h-3.5" /> Seleccionar carpeta de fotos
+                  <FolderOpen className="w-3.5 h-3.5 mr-1" /> Carpeta de fotos
                 </button>
-                <span className="file-name text-xs">{fotosName}</span>
+                <button
+                  type="button"
+                  onClick={() => archivosFotosInputRef.current?.click()}
+                  className="file-btn alt text-xs justify-center py-2"
+                  title="Seleccionar varios archivos JPG/PNG con Ctrl o Shift"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 mr-1" /> Archivos de fotos
+                </button>
               </div>
 
+              <div className="text-[11px] text-[#555552] dark:text-slate-400 bg-white dark:bg-slate-900 border border-[#dcdcd8] dark:border-slate-800 rounded p-2 flex items-center justify-between">
+                <span>Selección: <strong className="text-slate-800 dark:text-slate-200">{fotosName}</strong></span>
+              </div>
+
+              {/* Input para carpeta */}
               <input
                 ref={carpetaFotosInputRef}
                 type="file"
                 // @ts-ignore
                 webkitdirectory="true"
+                // @ts-ignore
+                directory="true"
                 multiple
                 onChange={handleCarpetaFotos}
                 className="hidden"
               />
 
+              {/* Input para múltiples archivos */}
+              <input
+                ref={archivosFotosInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/jpg"
+                multiple
+                onChange={handleArchivosFotos}
+                className="hidden"
+              />
+
               <div className="hint text-xs">
-                El nombre de cada foto debe ser el número de documento (ej. <strong>07557840.jpg</strong>).
+                El nombre de cada foto debe ser el número de documento (ej. <strong>07557840.jpg</strong> o <strong>45724229.png</strong>). Se coteja automáticamente con jugadores y árbitros registrados.
               </div>
 
               {fotosParsed.length > 0 && (
-                <div className="import-preview max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded p-1 space-y-1">
-                  {fotosParsed.map((p, i) => (
-                    <label key={i} className={`import-row ${!p.matched ? 'err' : ''}`}>
-                      <input
-                        type="checkbox"
-                        className="fotoChk"
-                        data-idx={i}
-                        defaultChecked={p.matched}
-                        disabled={!p.matched}
-                      />
-                      <span className="flex-1 text-xs">{p.file.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-[#555552] dark:text-slate-400">
+                    <span>
+                      {fotosParsed.filter((p) => p.matched).length} coincidentes de {fotosParsed.length} fotos
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAllFotos(true)}
+                        className="text-[#e11d2e] hover:underline font-bold"
+                      >
+                        Marcar todas
+                      </button>
+                      <span>·</span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAllFotos(false)}
+                        className="text-[#555552] hover:underline font-bold"
+                      >
+                        Desmarcar
+                      </button>
+                    </div>
+                  </div>
 
-              {fotosParsed.length > 0 && (
-                <button
-                  onClick={handleConfirmFotos}
-                  className="file-btn text-xs font-bold"
-                >
-                  <Upload className="w-3.5 h-3.5" /> Subir y emparejar fotos
-                </button>
+                  <div className="import-preview max-h-56 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 space-y-1.5 bg-white dark:bg-slate-900">
+                    {fotosParsed.map((p, i) => (
+                      <label
+                        key={i}
+                        className={`import-row flex items-center gap-2 p-1.5 rounded text-xs cursor-pointer border ${
+                          !p.matched
+                            ? 'bg-red-50/60 border-red-200 text-red-700'
+                            : p.checked
+                            ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900'
+                            : 'bg-white border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={p.checked}
+                          disabled={!p.matched}
+                          onChange={() => handleToggleFotoCheck(i)}
+                          className="rounded text-[#e11d2e] focus:ring-[#e11d2e] cursor-pointer"
+                        />
+                        {p.previewUrl ? (
+                          <img
+                            src={p.previewUrl}
+                            alt=""
+                            className="w-7 h-8 object-cover rounded border border-black/10 shrink-0 bg-slate-100"
+                          />
+                        ) : null}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-mono text-[11px] font-semibold truncate text-slate-800 dark:text-slate-200" title={p.fileName}>
+                            {p.fileName}
+                          </div>
+                          {p.matched ? (
+                            <div className="text-[11px] text-emerald-700 font-bold truncate">
+                              ✓ [{p.doc}] {p.matchedPerson?.nombreCompleto} <span className="text-[10px] uppercase font-semibold text-emerald-600">({p.tabla === 'administrativos' ? 'Árbitro' : 'Jugador'})</span>
+                            </div>
+                          ) : (
+                            <div className="text-[10.5px] text-red-600 font-medium italic">
+                              ✗ No coincide con ningún DNI registrado
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmFotos}
+                    disabled={fotosParsed.filter((p) => p.checked && p.matched).length === 0}
+                    className="file-btn text-xs font-bold w-full justify-center py-2.5 bg-[#e11d2e] hover:bg-[#b91c1c] text-white disabled:opacity-50 cursor-pointer shadow-sm transition-colors"
+                  >
+                    <Upload className="w-4 h-4 mr-1.5" /> Subir y enlazar ahora a Supabase ({fotosParsed.filter((p) => p.checked && p.matched).length} fotos)
+                  </button>
+                </div>
               )}
 
               {fotosStatus.msg && (

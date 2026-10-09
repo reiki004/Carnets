@@ -238,9 +238,16 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
               >
                 <img
                   id="imgPhoto"
+                  key={card.photoUrl || 'default-photo'}
                   src={card.photoUrl || DEFAULTS.photo}
                   alt="Foto"
                   className="f-photo-img"
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    if (target.src !== DEFAULTS.photo) {
+                      target.src = DEFAULTS.photo;
+                    }
+                  }}
                   style={{
                     transform:
                       card.photoOffsetX || card.photoOffsetY

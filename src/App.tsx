@@ -292,7 +292,6 @@ export default function App() {
             cargosCache={cargosCache}
             estadosCache={estadosCache}
             onOpenCardModal={handleOpenCardModal}
-            onSelectCard={setModalCard}
           />
         )}
 

@@ -26,7 +26,6 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
   cargosCache,
   estadosCache,
   onOpenCardModal,
-  onSelectCard,
 }) => {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<{ msg: string; kind: 'ok' | 'err' | 'loading' | '' }>({
@@ -153,7 +152,6 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         backBottomUrl: DEFAULTS.backbottom,
       };
       setPreviewCard(newCard);
-      onSelectCard?.(newCard);
     } else {
       const a = item as Administrativo;
       const cargoObj = cargosCache.find((c) => c.cargo === a.ClubCargo);
@@ -180,7 +178,6 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         backBottomUrl: DEFAULTS.backbottom,
       };
       setPreviewCard(newCard);
-      onSelectCard?.(newCard);
     }
   };
 
@@ -315,11 +312,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
                   checked={previewCard.showCategoria ?? false}
                   onChange={(e) => {
                     const checked = e.target.checked;
-                    setPreviewCard((prev) => {
-                      const updated = { ...prev, showCategoria: checked };
-                      onSelectCard?.(updated);
-                      return updated;
-                    });
+                    setPreviewCard((prev) => ({ ...prev, showCategoria: checked }));
                   }}
                   className="accent-[#e11d2e] w-4 h-4 rounded cursor-pointer"
                 />
@@ -338,13 +331,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
           {/* Componente CardPreview con niveladores interactivos */}
           <CardPreview
             card={previewCard}
-            onUpdateCard={(val: React.SetStateAction<CardState>) => {
-              setPreviewCard((prev) => {
-                const next = typeof val === 'function' ? val(prev) : val;
-                onSelectCard?.(next);
-                return next;
-              });
-            }}
+            onUpdateCard={setPreviewCard}
             showPrintButton={true}
             showControls={true}
             defaultScale="normal"
