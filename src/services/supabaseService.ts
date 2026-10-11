@@ -155,6 +155,12 @@ export function encontrarCoincidenciaDoc(
     if (dbDigits.length >= 6 && sinExt.includes(dbDigits)) {
       return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
     }
+    // 7. Coincidencia por apellidos completos o nombre completo (ej. "SACO-VERTIZ.jpg" o "CONTRERAS SIADEN.jpg")
+    const normSinExt = sinExt.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    const apNorm = (row.apellidos || row.Apellidos || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (apNorm && apNorm.length >= 4 && (normSinExt === apNorm || normSinExt.includes(apNorm) || apNorm.includes(normSinExt))) {
+      return { row, exactDoc: dbDoc, nombreCompleto, tabla, clubId };
+    }
   }
   return null;
 }
@@ -207,6 +213,7 @@ export function jugadorJsToRow(o: Jugador): any {
 }
 
 export function adminRowToJs(row: any): Administrativo {
+  const ternaVal = row.terna || row.categoria || null;
   return {
     NumeroDocumento: String(row.numero_documento || ''),
     TipoDocumento: normalizarTipoDoc(row.tipo_documento),
@@ -215,7 +222,7 @@ export function adminRowToJs(row: any): Administrativo {
     Tipo: row.tipo || 'Administrativo',
     ClubCargo: row.club_cargo || '',
     Categoria: row.categoria || null,
-    Terna: row.terna || row.categoria || null,
+    Terna: ternaVal ? String(ternaVal).trim().toUpperCase() : null,
     Estado: row.estado || null,
     FechaNacimiento: row.fecha_nacimiento || null,
     FotoArchivo: row.foto_url || null,
@@ -224,14 +231,27 @@ export function adminRowToJs(row: any): Administrativo {
 }
 
 export function adminJsToRow(o: Administrativo): any {
+  const isArbitro =
+    (o.ClubCargo || '').trim().toUpperCase() === 'ÁRBITRO' ||
+    (o.ClubCargo || '').trim().toUpperCase() === 'ARBITRO' ||
+    (o.Tipo || '').trim().toUpperCase() === 'ÁRBITRO' ||
+    (o.Tipo || '').trim().toUpperCase() === 'ARBITRO';
+
+  const ternaVal = o.Terna
+    ? o.Terna.trim().toUpperCase()
+    : isArbitro && o.Categoria
+    ? o.Categoria.trim().toUpperCase()
+    : null;
+
   const row: any = {
     numero_documento: o.NumeroDocumento,
     tipo_documento: normalizarTipoDoc(o.TipoDocumento),
     apellidos: o.Apellidos,
     nombres: o.Nombres,
-    tipo: o.Tipo || 'Administrativo',
+    tipo: o.Tipo || (isArbitro ? 'Árbitro' : 'Administrativo'),
     club_cargo: o.ClubCargo,
-    categoria: o.Terna || o.Categoria || null,
+    terna: ternaVal || null,
+    categoria: isArbitro ? null : (o.Categoria || null),
     estado: o.Estado || null,
     fecha_nacimiento: o.FechaNacimiento || null,
     foto_url: o.FotoArchivo || null,
@@ -245,44 +265,46 @@ const LOCAL_TERNAS_KEY = 'interclubes_ternas_cache';
 export async function fetchTernasSupabase(): Promise<string[]> {
   const set = new Set<string>();
 
-  // 1. Intentar cargar desde tabla dedicada 'ternas' si existe en Supabase
+  // 1. Cargar desde la tabla unificada 'terna' en Supabase
   try {
-    const { data, error } = await sb.from('ternas').select('terna').order('terna');
+    const { data, error } = await sb.from('terna').select('terna').order('terna');
     if (!error && data && data.length > 0) {
       data.forEach((r: any) => {
+        const val = String(r.terna || r.nombre || '').trim().toUpperCase();
+        if (val) set.add(val);
+      });
+    }
+  } catch (err) {}
+
+  // 2. Cargar ternas ya registradas en la columna terna de la tabla administrativos (NO como categoria)
+  try {
+    const { data: admData } = await sb
+      .from('administrativos')
+      .select('terna')
+      .not('terna', 'is', null)
+      .limit(500);
+    if (admData) {
+      admData.forEach((r: any) => {
         const val = String(r.terna || '').trim().toUpperCase();
         if (val) set.add(val);
       });
     }
   } catch (err) {}
 
-  // 2. Cargar ternas ya registradas en la columna categoria de la tabla administrativos
-  try {
-    const { data: admData } = await sb
-      .from('administrativos')
-      .select('categoria')
-      .not('categoria', 'is', null)
-      .limit(100);
-    if (admData) {
-      admData.forEach((r: any) => {
-        const val = String(r.categoria || '').trim().toUpperCase();
-        if (val) set.add(val);
-      });
-    }
-  } catch (err) {}
-
   // 3. Cargar desde localStorage
-  const saved = localStorage.getItem(LOCAL_TERNAS_KEY);
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item: any) => {
-          const val = String(item || '').trim().toUpperCase();
-          if (val) set.add(val);
-        });
-      }
-    } catch {}
+  if (typeof localStorage !== 'undefined') {
+    const saved = localStorage.getItem(LOCAL_TERNAS_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item: any) => {
+            const val = String(item || '').trim().toUpperCase();
+            if (val) set.add(val);
+          });
+        }
+      } catch {}
+    }
   }
 
   // Valores predeterminados si aún no hay ninguna
@@ -291,7 +313,9 @@ export async function fetchTernasSupabase(): Promise<string[]> {
   }
 
   const list = Array.from(set).sort();
-  localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(list));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(list));
+  }
   return list;
 }
 
@@ -299,26 +323,35 @@ export async function insertTernaSupabase(ternaName: string): Promise<void> {
   const t = ternaName.trim().toUpperCase();
   if (!t) return;
 
+  // Insertar en la tabla unificada 'terna' de Supabase
   try {
-    await sb.from('ternas').insert([{ terna: t }]);
-  } catch (err) {}
+    await sb.from('terna').insert([{ terna: t }]);
+  } catch (err) {
+    console.error('Error insertando en terna:', err);
+  }
 
   const current = await fetchTernasSupabase();
   if (!current.includes(t)) {
     const next = [...current, t].sort();
-    localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(next));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(next));
+    }
   }
 }
 
 export async function deleteTernaSupabase(ternaName: string): Promise<void> {
   const t = ternaName.trim().toUpperCase();
   try {
-    await sb.from('ternas').delete().eq('terna', t);
-  } catch (err) {}
+    await sb.from('terna').delete().eq('terna', t);
+  } catch (err) {
+    console.error('Error eliminando de terna:', err);
+  }
 
   const current = await fetchTernasSupabase();
   const next = current.filter((item) => item !== t);
-  localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(next));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(LOCAL_TERNAS_KEY, JSON.stringify(next));
+  }
 }
 
 /**
@@ -341,6 +374,9 @@ export async function subirImagenSupabase(
         bytes[i] = binary.charCodeAt(i);
       }
       body = bytes;
+    } else if (typeof (dataOrBase64 as any)?.arrayBuffer === 'function') {
+      const buf = await (dataOrBase64 as Blob | File).arrayBuffer();
+      body = new Uint8Array(buf);
     } else {
       body = dataOrBase64;
     }

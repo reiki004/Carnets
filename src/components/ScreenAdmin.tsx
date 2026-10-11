@@ -98,7 +98,9 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
   const isArbitro = cargo.trim().toUpperCase() === 'ÁRBITRO' || cargo.trim().toUpperCase() === 'ARBITRO';
 
   function esNombreValido(str: string): boolean {
-    return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/.test(str.trim()) && str.trim().length > 0;
+    if (!str) return false;
+    const trimmed = str.trim();
+    return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s\-]+$/.test(trimmed) && /[A-Za-zÁÉÍÓÚÜáéíóúüÑñ]/.test(trimmed);
   }
 
   // Carga inicial de árbitros para navegación directa
@@ -243,18 +245,15 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       return;
     }
     if (!/^\d{8}$/.test(doc)) {
-      alert('El número de documento (DNI, CE o Pasaporte) debe tener exactamente 8 dígitos numéricos.');
       setStatus({ msg: 'El documento debe tener exactamente 8 dígitos numéricos.', kind: 'err' });
       return;
     }
     if (!esNombreValido(apellidos)) {
-      alert('Apellidos solo debe contener letras (se acepta Ñ y tildes).');
-      setStatus({ msg: 'Apellidos solo debe contener letras (se acepta Ñ y tildes).', kind: 'err' });
+      setStatus({ msg: 'Apellidos solo debe contener letras, tildes, Ñ o guiones (-) para apellidos compuestos.', kind: 'err' });
       return;
     }
     if (!esNombreValido(nombres)) {
-      alert('Nombres solo debe contener letras (se acepta Ñ y tildes).');
-      setStatus({ msg: 'Nombres solo debe contener letras (se acepta Ñ y tildes).', kind: 'err' });
+      setStatus({ msg: 'Nombres solo debe contener letras, tildes, Ñ o guiones (-).', kind: 'err' });
       return;
     }
     const fechaIso = dmyAIso(fnac);
@@ -277,10 +276,10 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
         NumeroDocumento: doc,
         Apellidos: apellidos.trim().toUpperCase(),
         Nombres: nombres.trim().toUpperCase(),
-        Tipo: 'Administrativo',
+        Tipo: isArbitro ? 'Árbitro' : 'Administrativo',
         ClubCargo: cargo,
-        Categoria: ternaFinal,
-        Terna: ternaFinal,
+        Categoria: null,
+        Terna: ternaFinal || null,
         Estado: '',
         FechaNacimiento: fechaIso,
         FotoArchivo: fotoUrl,
@@ -349,7 +348,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       const validated = parsed.map((r) => {
         const motivos: string[] = [];
         if (!/^\d{8}$/.test(r.NumeroDocumento)) motivos.push('documento debe ser 8 dígitos numéricos');
-        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos');
+        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ y guion -)');
 
         // Validación de Terna:
         // Si es ÁRBITRO, se permite subir con el campo vacío en TERNA, pero valida que pertenezca a una terna existente si tiene valor
@@ -426,7 +425,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           Nombres: r.Nombres.toUpperCase(),
           Tipo: 'Árbitro',
           ClubCargo: r.Cargo,
-          Categoria: r.__ternaResuelta || null,
+          Categoria: null,
           Terna: r.__ternaResuelta || null,
           Estado: r.Estado || 'ACTIVO',
           FechaNacimiento: r.FechaNacimiento || null,

@@ -24,6 +24,8 @@ import {
   CheckCircle,
   Database,
   Save,
+  X,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface ScreenConfigProps {
@@ -164,6 +166,9 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
 
       await refreshClubes();
       setSelectedClubId(cId);
+      setClubLogoBase64(null);
+      setClubLogoName(logoUrl ? 'logo actual (guardado)' : 'ninguno');
+      if (clubLogoInputRef.current) clubLogoInputRef.current.value = '';
       setClubStatus({ msg: '¡Club guardado exitosamente!', kind: 'ok' });
     } catch (err: any) {
       setClubStatus({ msg: 'Error al guardar club: ' + err.message, kind: 'err' });
@@ -280,6 +285,12 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const currentClub = clubes.find((c) => c.ClubID === selectedClubId);
+  const currentClubLogo = currentClub?.LogoArchivo || null;
+  const previewLogoUrl = clubLogoBase64
+    ? (clubLogoBase64.startsWith('data:') ? clubLogoBase64 : `data:${clubLogoMime};base64,${clubLogoBase64}`)
+    : currentClubLogo;
+
   return (
     <div className="space-y-6">
       {/* ================= SECCIÓN 1: GESTIÓN DE CLUBES (DENTRO DE CONFIG) ================= */}
@@ -309,14 +320,68 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
           placeholder="NOMBRE DEL CLUB"
         />
 
-        <label className="text-xs font-bold text-[#1a1a1a] mt-2">Logo del club</label>
+        <label className="text-xs font-bold text-[#1a1a1a] mt-2 block">Logo del club</label>
+
+        {/* Vista previa del logo (tanto al editar como al subir uno nuevo) */}
+        <div className="mt-1 mb-2.5 p-3 bg-white border border-[#dcdcd8] rounded-xl flex items-center gap-3.5 shadow-2xs">
+          <div className="w-16 h-16 rounded-lg border border-[#dcdcd8] bg-[#f9f9f8] flex items-center justify-center overflow-hidden shrink-0 p-1 relative shadow-inner">
+            {previewLogoUrl ? (
+              <img
+                src={previewLogoUrl}
+                alt="Vista previa del logo"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-[#999994] text-[10.5px] text-center p-1 select-none">
+                <Shield className="w-5 h-5 mb-0.5 opacity-40 text-slate-400" />
+                <span>Sin logo</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0 text-xs">
+            <div className="font-bold text-[#1a1a1a] truncate" title={clubLogoName}>
+              {previewLogoUrl
+                ? (clubLogoBase64 ? clubLogoName : (currentClub?.NombreClub ? `Logo de ${currentClub.NombreClub}` : 'Logo actual'))
+                : 'Sin logo asignado'}
+            </div>
+            {clubLogoBase64 ? (
+              <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                ✓ Nuevo logo seleccionado (listo para guardar)
+              </span>
+            ) : currentClubLogo ? (
+              <span className="text-[11px] text-blue-600 font-medium flex items-center gap-1 mt-0.5">
+                ✓ Logo actual registrado en Supabase
+              </span>
+            ) : (
+              <span className="text-[11px] text-[#777774] italic mt-0.5 block">
+                Selecciona una imagen para asignar el escudo o logo oficial.
+              </span>
+            )}
+
+            {clubLogoBase64 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClubLogoBase64(null);
+                  setClubLogoName(currentClubLogo ? 'logo actual (sin cambios)' : 'ninguno');
+                  if (clubLogoInputRef.current) clubLogoInputRef.current.value = '';
+                }}
+                className="text-[11px] text-[#e11d2e] hover:underline font-semibold mt-1.5 inline-flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3 h-3" /> Descartar logo seleccionado
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="file-row">
           <button
             type="button"
             onClick={() => clubLogoInputRef.current?.click()}
             className="file-btn alt text-xs"
           >
-            <Upload className="w-3.5 h-3.5" /> Subir logo
+            <Upload className="w-3.5 h-3.5" /> {previewLogoUrl ? 'Cambiar logo' : 'Subir logo'}
           </button>
           <span className="file-name">{clubLogoName}</span>
         </div>

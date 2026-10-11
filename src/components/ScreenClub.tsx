@@ -119,7 +119,9 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
   const archivosFotosInputRef = useRef<HTMLInputElement>(null);
 
   function esNombreValido(str: string): boolean {
-    return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s]+$/.test(str.trim()) && str.trim().length > 0;
+    if (!str) return false;
+    const trimmed = str.trim();
+    return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s\-]+$/.test(trimmed) && /[A-Za-zÁÉÍÓÚÜáéíóúüÑñ]/.test(trimmed);
   }
 
   // Ordenar siempre la lista en orden alfabético de Apellidos y Nombres
@@ -322,18 +324,15 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       return;
     }
     if (!/^\d{8}$/.test(num)) {
-      alert('El número de documento (DNI, CE o Pasaporte) debe tener exactamente 8 dígitos numéricos.');
       setFormStatus({ msg: 'El documento debe tener exactamente 8 dígitos numéricos.', kind: 'err' });
       return;
     }
     if (!esNombreValido(apellidos)) {
-      alert('Apellidos solo debe contener letras (se acepta Ñ y tildes).');
-      setFormStatus({ msg: 'Apellidos solo debe contener letras (se acepta Ñ y tildes).', kind: 'err' });
+      setFormStatus({ msg: 'Apellidos solo debe contener letras, tildes, Ñ o guiones (-) para apellidos compuestos.', kind: 'err' });
       return;
     }
     if (!esNombreValido(nombres)) {
-      alert('Nombres solo debe contener letras (se acepta Ñ y tildes).');
-      setFormStatus({ msg: 'Nombres solo debe contener letras (se acepta Ñ y tildes).', kind: 'err' });
+      setFormStatus({ msg: 'Nombres solo debe contener letras, tildes, Ñ o guiones (-).', kind: 'err' });
       return;
     }
     const fechaIso = dmyAIso(fnac);
@@ -504,7 +503,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       const validated = parsed.map((r) => {
         const motivos: string[] = [];
         if (!/^\d{8}$/.test(r.NumeroDocumento)) motivos.push('documento debe ser 8 dígitos numéricos');
-        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos');
+        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ y guion -)');
         if (!r.FechaNacimiento) motivos.push('fecha de nacimiento inválida (use formato DD/MM/AAAA o fecha estándar)');
 
         // Validación estricta: Club no puede ser NULL ni blanco, y debe existir
