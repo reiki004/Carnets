@@ -37,6 +37,7 @@ import {
   Save,
   Search,
   Image as ImageIcon,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ScreenClubProps {
@@ -96,6 +97,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
   const [excelName, setExcelName] = useState('ningún archivo elegido');
   const [importRows, setImportRows] = useState<any[]>([]);
   const [excelCheckedIndices, setExcelCheckedIndices] = useState<number[]>([]);
+  const [excelFilter, setExcelFilter] = useState<'todos' | 'errores' | 'observaciones' | 'validos'>('todos');
   const [importStatus, setImportStatus] = useState<{ msg: string; kind: 'ok' | 'err' | 'loading' | '' }>({
     msg: '',
     kind: '',
@@ -469,45 +471,95 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setExcelName(file.name);
+    setExcelFilter('todos');
     setImportStatus({ msg: 'Leyendo archivo Excel…', kind: 'loading' });
 
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: true });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const aoa: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-      const parsed = rows
-        .map((row) => {
-          const rawClub = String(row.Club === null || row.Club === undefined ? '' : row.Club).trim();
-          const rawCat = String(row.Categoria === null || row.Categoria === undefined ? '' : row.Categoria).trim();
-          const rawEst = String(row.Estado === null || row.Estado === undefined ? '' : row.Estado).trim();
-          return {
-            TipoDocumento: normalizarTipoDoc(row.TipoDocumento),
-            NumeroDocumento: String(row.NumeroDocumento || '').trim(),
-            Apellidos: String(row.Apellidos || '').trim(),
-            Nombres: String(row.Nombres || '').trim(),
-            FechaNacimiento: normalizarFechaIso(row.FechaNacimiento) || '',
-            Club: rawClub,
-            Categoria: rawCat,
-            Estado: rawEst,
-          };
-        })
-        .filter((r) => r.NumeroDocumento);
+      if (!aoa.length) {
+        setImportStatus({ msg: 'El archivo Excel no contiene datos.', kind: 'err' });
+        return;
+      }
+
+      // Encabezados en fila 1 (índice 0)
+      const headerRow = (aoa[0] || []).map((h: any) => String(h || '').trim());
+      const getVal = (rowArr: any[], ...keys: string[]) => {
+        for (const k of keys) {
+          const normK = k.toLowerCase().replace(/[\s_\-]/g, '');
+          const idx = headerRow.findIndex((h) => h.toLowerCase().replace(/[\s_\-]/g, '') === normK);
+          if (idx !== -1 && rowArr[idx] !== undefined && rowArr[idx] !== null) {
+            return rowArr[idx];
+          }
+        }
+        return '';
+      };
+
+      const parsed: any[] = [];
+      let registroCounter = 0;
+      for (let r = 1; r < aoa.length; r++) {
+        const rowArr = aoa[r];
+        if (!rowArr || !Array.isArray(rowArr)) continue;
+        const isEmpty = rowArr.every((c: any) => String(c === null || c === undefined ? '' : c).trim() === '');
+        if (isEmpty) continue; // Omite filas completamente vacías en el Excel
+
+        registroCounter++;
+        const excelRowNumber = r + 1; // Fila exacta en el Excel (1-indexed, fila 1 es encabezado)
+
+        const rawClub = String(getVal(rowArr, 'Club', 'NombreClub', 'Nombre Club') || '').trim();
+        const rawCat = String(getVal(rowArr, 'Categoria', 'Categoría') || '').trim();
+        const rawEst = String(getVal(rowArr, 'Estado') || '').trim();
+        const rawTipoDoc = getVal(rowArr, 'TipoDocumento', 'Tipo Documento', 'TipoDoc', 'Tipo');
+        const rawNumDoc = String(getVal(rowArr, 'NumeroDocumento', 'Numero Documento', 'NumDoc', 'Documento', 'DNI') || '').trim();
+        const rawApellidos = String(getVal(rowArr, 'Apellidos', 'Apellido') || '').trim();
+        const rawNombres = String(getVal(rowArr, 'Nombres', 'Nombre') || '').trim();
+        const rawFecha = getVal(rowArr, 'FechaNacimiento', 'Fecha Nacimiento', 'FechaNac', 'FecNac');
+
+        parsed.push({
+          __excelRow: excelRowNumber,
+          __registroNum: registroCounter,
+          TipoDocumento: normalizarTipoDoc(rawTipoDoc),
+          NumeroDocumento: rawNumDoc,
+          Apellidos: rawApellidos,
+          Nombres: rawNombres,
+          FechaNacimiento: normalizarFechaIso(rawFecha) || '',
+          Club: rawClub,
+          Categoria: rawCat,
+          Estado: rawEst,
+        });
+      }
 
       if (!parsed.length) {
-        setImportStatus({ msg: 'No se encontraron filas con NumeroDocumento válido.', kind: 'err' });
+        setImportStatus({ msg: 'No se encontraron filas con datos en el archivo Excel.', kind: 'err' });
         return;
       }
 
       const { data: existingRows } = await sb.from('jugadores').select('numero_documento');
       const existingDocs = (existingRows || []).map((r: any) => String(r.numero_documento));
 
-      const validated = parsed.map((r) => {
+      const validated = parsed.map((r, originalIdx) => {
         const motivos: string[] = [];
-        if (!/^\d{8}$/.test(r.NumeroDocumento)) motivos.push('documento debe ser 8 dígitos numéricos');
-        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ, diéresis, ç, apóstrofes y guion -)');
-        if (!r.FechaNacimiento) motivos.push('fecha de nacimiento inválida (use formato DD/MM/AAAA o fecha estándar)');
+
+        if (!r.NumeroDocumento) {
+          motivos.push('número de documento obligatorio (vacío o ausente en el Excel)');
+        } else if (!/^\d{8}$/.test(r.NumeroDocumento)) {
+          motivos.push('documento debe ser 8 dígitos numéricos');
+        }
+
+        if (!r.Apellidos && !r.Nombres) {
+          motivos.push('apellidos y nombres obligatorios');
+        } else {
+          if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) {
+            motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ, diéresis, ç, apóstrofes y guion -)');
+          }
+        }
+
+        if (!r.FechaNacimiento) {
+          motivos.push('fecha de nacimiento inválida (use formato DD/MM/AAAA o fecha estándar)');
+        }
 
         // Validación estricta: Club no puede ser NULL ni blanco, y debe existir
         let clubEncontrado = null;
@@ -542,12 +594,15 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           if (!estEncontrado) motivos.push(`el estado "${r.Estado}" no existe`);
         }
 
+        const isDup = r.NumeroDocumento ? existingDocs.includes(r.NumeroDocumento) : false;
+
         return {
           ...r,
+          __index: originalIdx,
           __clubId: clubEncontrado ? clubEncontrado.ClubID : null,
           __categoriaResuelta: catEncontrada || null,
           __estadoResuelto: estEncontrado || estNormal || 'SOCIO',
-          __isDup: existingDocs.includes(r.NumeroDocumento),
+          __isDup: isDup,
           __motivos: motivos,
           __valid: motivos.length === 0,
         };
@@ -556,17 +611,44 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       setImportRows(validated);
       // Por requerimiento: marcar por defecto las filas que sean válidas
       setExcelCheckedIndices(
-        validated.map((v, idx) => (v.__valid ? idx : -1)).filter((idx) => idx !== -1)
+        validated.map((v) => (v.__valid ? v.__index : -1)).filter((idx) => idx !== -1)
       );
-      const invalidos = validated.filter((r) => !r.__valid).length;
+
+      const errRows = validated.filter((r) => !r.__valid);
+      const obsRows = validated.filter((r) => r.__isDup);
+
+      let statusMsg = `${validated.length} registro(s) leído(s) del archivo Excel.`;
+      if (errRows.length > 0) {
+        const errList = errRows.map((r) => `Fila ${r.__excelRow} (Reg. #${r.__registroNum})`).join(', ');
+        statusMsg += ` ⚠️ ${errRows.length} fila(s) con ERROR: ${errList}.`;
+      }
+      if (obsRows.length > 0) {
+        const obsList = obsRows.map((r) => `Fila ${r.__excelRow} (Reg. #${r.__registroNum})`).join(', ');
+        statusMsg += ` ℹ️ ${obsRows.length} fila(s) con OBSERVACIÓN (ya existe): ${obsList}.`;
+      }
+      if (errRows.length === 0 && obsRows.length === 0) {
+        statusMsg += ` ✓ Todos los registros son válidos y listos para importar.`;
+      }
+
       setImportStatus({
-        msg: `${validated.length} fila(s) leída(s)${invalidos ? `, ${invalidos} con errores (campos obligatorios vacíos o no existentes)` : ''}.`,
-        kind: invalidos ? 'err' : 'ok',
+        msg: statusMsg,
+        kind: errRows.length > 0 ? 'err' : 'ok',
       });
     } catch (err: any) {
       setImportStatus({ msg: 'Error leyendo archivo: ' + err.message, kind: 'err' });
     }
   };
+
+  const filasConProblemas = useMemo(() => {
+    return importRows.filter((r) => !r.__valid || r.__isDup);
+  }, [importRows]);
+
+  const filasFiltradas = useMemo(() => {
+    if (excelFilter === 'errores') return importRows.filter((r) => !r.__valid);
+    if (excelFilter === 'observaciones') return importRows.filter((r) => r.__isDup && r.__valid);
+    if (excelFilter === 'validos') return importRows.filter((r) => r.__valid && !r.__isDup);
+    return importRows;
+  }, [importRows, excelFilter]);
 
   const handleToggleAllExcel = () => {
     if (excelCheckedIndices.length === importRows.length) {
@@ -587,7 +669,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       setImportStatus({ msg: 'No hay filas marcadas para importar.', kind: 'err' });
       return;
     }
-    const seleccionados = importRows.filter((_, idx) => excelCheckedIndices.includes(idx));
+    const seleccionados = importRows.filter((r) => excelCheckedIndices.includes(r.__index));
     const validos = seleccionados.filter((r) => r.__valid);
     if (!validos.length) {
       setImportStatus({
@@ -628,6 +710,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
 
       setImportRows([]);
       setExcelCheckedIndices([]);
+      setExcelFilter('todos');
       setExcelName('ningún archivo elegido');
       if (excelInputRef.current) excelInputRef.current.value = '';
       setImportStatus({ msg: `¡${validos.length} jugadores importados exitosamente!`, kind: 'ok' });
@@ -640,6 +723,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
   const handleCancelImport = () => {
     setImportRows([]);
     setExcelCheckedIndices([]);
+    setExcelFilter('todos');
     setExcelName('ningún archivo elegido');
     if (excelInputRef.current) {
       excelInputRef.current.value = '';
@@ -1326,67 +1410,186 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               </div>
 
               {importRows.length > 0 && (
-                <div className="flex items-center justify-between bg-white dark:bg-[#1e1e21] p-2 rounded-lg border border-[#dcdcd8] dark:border-[#2e2e33]">
-                  <label className="flex items-center gap-2 text-xs font-bold text-[#1a1a1a] dark:text-white cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={importRows.length > 0 && excelCheckedIndices.length === importRows.length}
-                      onChange={handleToggleAllExcel}
-                      className="cursor-pointer"
-                    />
-                    <span>Activar / desactivar todos</span>
-                  </label>
-                  <span className="text-xs font-black text-[#e11d2e] bg-[#f4f4f2] dark:bg-black/30 px-2.5 py-0.5 rounded-full border border-[#dcdcd8] dark:border-[#2e2e33]">
-                    {excelCheckedIndices.length} de {importRows.length} activados
-                  </span>
-                </div>
-              )}
-
-              {importRows.length > 0 && (
-                <div className="import-preview max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded p-1 space-y-1">
-                  {importRows.map((r, i) => (
-                    <label
-                      key={i}
-                      className={`import-row ${!r.__valid ? 'err' : r.__isDup ? 'dup' : ''}`}
-                    >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-white dark:bg-[#1e1e21] p-2 rounded-lg border border-[#dcdcd8] dark:border-[#2e2e33]">
+                    <label className="flex items-center gap-2 text-xs font-bold text-[#1a1a1a] dark:text-white cursor-pointer select-none">
                       <input
                         type="checkbox"
-                        className="importChk cursor-pointer"
-                        data-idx={i}
-                        checked={excelCheckedIndices.includes(i)}
-                        onChange={() => handleToggleExcelRow(i)}
+                        checked={importRows.length > 0 && excelCheckedIndices.length === importRows.length}
+                        onChange={handleToggleAllExcel}
+                        className="cursor-pointer"
                       />
-                      <span className="flex-1 text-xs">
-                        <b>{r.Apellidos} {r.Nombres}</b> — {r.NumeroDocumento} ({r.Club}) {r.FechaNacimiento ? `· F.Nac: ${isoADmy(r.FechaNacimiento)}` : ''}
-                        {!r.__valid ? (
-                          <small className="block text-red-600">
-                            {r.__motivos.join('; ')}
-                          </small>
-                        ) : r.__isDup ? (
-                          <small className="block text-amber-600">
-                            Duplicado en la base
-                          </small>
-                        ) : null}
-                      </span>
+                      <span>Activar / desactivar todos</span>
                     </label>
-                  ))}
-                </div>
-              )}
+                    <span className="text-xs font-black text-[#e11d2e] bg-[#f4f4f2] dark:bg-black/30 px-2.5 py-0.5 rounded-full border border-[#dcdcd8] dark:border-[#2e2e33]">
+                      {excelCheckedIndices.length} de {importRows.length} activados
+                    </span>
+                  </div>
 
-              {importRows.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleConfirmImport}
-                    className="file-btn text-xs font-bold"
-                  >
-                    <Check className="w-3.5 h-3.5" /> Confirmar importación
-                  </button>
-                  <button
-                    onClick={handleCancelImport}
-                    className="file-btn text-xs font-bold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
-                  >
-                    <X className="w-3.5 h-3.5" /> Cancelar importación
-                  </button>
+                  {/* Filtros rápidos de visualización */}
+                  <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setExcelFilter('todos')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                        excelFilter === 'todos'
+                          ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-xs'
+                          : 'bg-white text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      Todos ({importRows.length})
+                    </button>
+                    {filasConProblemas.filter((r) => !r.__valid).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setExcelFilter('errores')}
+                        className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                          excelFilter === 'errores'
+                            ? 'bg-red-600 text-white shadow-xs'
+                            : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800 hover:bg-red-100'
+                        }`}
+                      >
+                        ⚠️ Con error ({filasConProblemas.filter((r) => !r.__valid).length})
+                      </button>
+                    )}
+                    {filasConProblemas.filter((r) => r.__isDup && r.__valid).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setExcelFilter('observaciones')}
+                        className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                          excelFilter === 'observaciones'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'
+                        }`}
+                      >
+                        ℹ️ Con observación ({filasConProblemas.filter((r) => r.__isDup && r.__valid).length})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setExcelFilter('validos')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                        excelFilter === 'validos'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                      }`}
+                    >
+                      ✓ Válidos ({importRows.filter((r) => r.__valid && !r.__isDup).length})
+                    </button>
+                  </div>
+
+                  {/* Reporte de Filas con Error u Observación */}
+                  {filasConProblemas.length > 0 && (
+                    <div className="bg-red-50/70 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg p-2.5 text-xs space-y-1.5">
+                      <div className="font-bold flex items-center justify-between text-red-800 dark:text-red-300">
+                        <div className="flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-red-600 dark:text-red-400" />
+                          <span>Filas del archivo Excel con Error u Observación ({filasConProblemas.length}):</span>
+                        </div>
+                        <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-normal">
+                          Indica la fila exacta en su hoja de cálculo
+                        </span>
+                      </div>
+                      <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1 divide-y divide-red-100 dark:divide-red-900/30">
+                        {filasConProblemas.map((r) => (
+                          <div key={r.__excelRow} className="pt-1.5 first:pt-0 flex items-start gap-2 text-[11px] leading-snug">
+                            <span className={`px-1.5 py-0.5 rounded font-mono font-bold text-[10px] flex-shrink-0 border ${
+                              !r.__valid 
+                                ? 'bg-red-200 text-red-900 border-red-300 dark:bg-red-900 dark:text-red-100 dark:border-red-700' 
+                                : 'bg-amber-200 text-amber-900 border-amber-300 dark:bg-amber-900 dark:text-amber-100 dark:border-amber-700'
+                            }`}>
+                              Fila {r.__excelRow} (Reg. #{r.__registroNum})
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                {r.Apellidos || '(Sin apellidos)'} {r.Nombres || '(Sin nombres)'}
+                                <span className="text-slate-500 font-mono text-[10.5px]"> — {r.TipoDocumento} {r.NumeroDocumento || 'Sin doc'}</span>
+                              </div>
+                              <div className={!r.__valid ? 'text-red-700 dark:text-red-300 font-medium' : 'text-amber-700 dark:text-amber-300 font-medium'}>
+                                {!r.__valid ? (
+                                  <span>⚠️ <strong>Error en Fila {r.__excelRow}:</strong> {r.__motivos.join('; ')}</span>
+                                ) : (
+                                  <span>ℹ️ <strong>Observación en Fila {r.__excelRow}:</strong> DNI {r.NumeroDocumento} ya existe en el sistema (se actualizará)</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Listado de filas importadas */}
+                  <div className="import-preview max-h-56 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded p-1 space-y-1">
+                    {filasFiltradas.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-slate-500">
+                        No hay registros en esta vista de filtro ({excelFilter}).
+                      </div>
+                    ) : (
+                      filasFiltradas.map((r) => {
+                        const i = r.__index;
+                        return (
+                          <label
+                            key={r.__excelRow}
+                            className={`import-row ${!r.__valid ? 'err' : r.__isDup ? 'dup' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="importChk cursor-pointer"
+                              data-idx={i}
+                              checked={excelCheckedIndices.includes(i)}
+                              onChange={() => handleToggleExcelRow(i)}
+                            />
+                            <div className="flex-1 text-xs">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border ${
+                                  !r.__valid
+                                    ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800'
+                                    : r.__isDup
+                                    ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
+                                    : 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                }`}>
+                                  Fila {r.__excelRow} (Reg. #{r.__registroNum})
+                                </span>
+                                <b>{r.Apellidos || '(Sin apellidos)'} {r.Nombres || '(Sin nombres)'}</b>
+                                <span className="text-slate-500 font-mono">
+                                  — {r.TipoDocumento} {r.NumeroDocumento || '(Sin doc)'}
+                                </span>
+                                {r.Club && <span className="text-slate-600 font-medium">({r.Club})</span>}
+                                {r.FechaNacimiento && (
+                                  <span className="text-slate-500">· F.Nac: {isoADmy(r.FechaNacimiento)}</span>
+                                )}
+                              </div>
+                              {!r.__valid ? (
+                                <small className="block text-red-600 dark:text-red-400 font-semibold mt-1">
+                                  ⚠️ <strong>Fila Excel #{r.__excelRow} [Error]:</strong> {r.__motivos.join('; ')}
+                                </small>
+                              ) : r.__isDup ? (
+                                <small className="block text-amber-600 dark:text-amber-400 font-medium mt-1">
+                                  ℹ️ <strong>Fila Excel #{r.__excelRow} [Observación]:</strong> Duplicado en la base (se actualizará)
+                                </small>
+                              ) : null}
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleConfirmImport}
+                      className="file-btn text-xs font-bold"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Confirmar importación
+                    </button>
+                    <button
+                      onClick={handleCancelImport}
+                      className="file-btn text-xs font-bold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                    >
+                      <X className="w-3.5 h-3.5" /> Cancelar importación
+                    </button>
+                  </div>
                 </div>
               )}
 
