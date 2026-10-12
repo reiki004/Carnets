@@ -7,6 +7,7 @@ import {
   adminJsToRow,
   subirImagenSupabase,
   obtenerTodosParaFotos,
+  buscarRegistrosParaArchivosFotos,
   subirYEnlazarFoto,
   normalizarTipoDoc,
   encontrarCoincidenciaDoc,
@@ -14,6 +15,7 @@ import {
 import { DEFAULTS } from '../assets/cardAssets';
 import { CardState } from './CardPreview';
 import { DateInput } from './DateInput';
+import { ThumbnailFoto } from './ThumbnailFoto';
 import { isoADmy, dmyAIso, normalizarFechaIso } from '../utils/dateHelpers';
 import {
   Search,
@@ -556,7 +558,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     setFotosStatus({ msg: 'Verificando fotos con la base de datos de Supabase…', kind: 'loading' });
 
     try {
-      const todosLosRegistros = await obtenerTodosParaFotos();
+      const todosLosRegistros = await buscarRegistrosParaArchivosFotos(files, searchResults);
 
       const parsed = files.map((f) => {
         const match = encontrarCoincidenciaDoc(f.name, todosLosRegistros);
@@ -772,13 +774,19 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
               {arbitrosFiltrados.map((r) => (
                 <div
                   key={r.NumeroDocumento}
-                  className="p-2.5 rounded-lg border border-[#dcdcd8] hover:border-[#e11d2e] bg-white flex items-center justify-between gap-2 transition-colors"
+                  className="p-2.5 rounded-lg border border-[#dcdcd8] hover:border-[#e11d2e] bg-white flex items-center justify-between gap-2.5 transition-colors"
                 >
+                  <ThumbnailFoto
+                    src={r.FotoArchivo}
+                    alt={`${r.Apellidos} ${r.Nombres}`}
+                    title={`${r.Apellidos} ${r.Nombres} (${r.NumeroDocumento})`}
+                    className="w-9 h-9 rounded-md object-cover border border-[#dcdcd8] shrink-0"
+                  />
                   <div
                     onClick={() => cargarAdminEnFormulario(r)}
-                    className="cursor-pointer flex-1"
+                    className="cursor-pointer flex-1 min-w-0"
                   >
-                    <b className="text-xs text-[#1a1a1a] font-extrabold block">
+                    <b className="text-xs text-[#1a1a1a] font-extrabold block truncate">
                       {r.Apellidos} {r.Nombres}
                     </b>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -1008,11 +1016,19 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                 {/* Miniatura de la foto */}
                 {(fotoBase64 || editingAdmin?.FotoArchivo) && (
                   <div className="mt-2.5 flex items-center gap-3 p-2 bg-white rounded-lg border border-[#dcdcd8] shadow-2xs">
-                    <img
-                      src={fotoBase64 ? `data:${fotoMime};base64,${fotoBase64}` : editingAdmin?.FotoArchivo || ''}
-                      alt="Miniatura"
-                      className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
-                    />
+                    {fotoBase64 ? (
+                      <img
+                        src={`data:${fotoMime};base64,${fotoBase64}`}
+                        alt="Miniatura"
+                        className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
+                      />
+                    ) : (
+                      <ThumbnailFoto
+                        src={editingAdmin?.FotoArchivo}
+                        alt="Miniatura"
+                        className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
+                      />
+                    )}
                     <div className="text-xs">
                       <span className="font-bold text-[#1a1a1a] block truncate max-w-[200px]">{fotoName}</span>
                       <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">

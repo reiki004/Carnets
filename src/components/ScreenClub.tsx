@@ -8,6 +8,7 @@ import {
   jugadorJsToRow,
   subirImagenSupabase,
   obtenerTodosParaFotos,
+  buscarRegistrosParaArchivosFotos,
   subirYEnlazarFoto,
   ESTADOS_FIJOS,
   normalizarEstado,
@@ -17,6 +18,7 @@ import {
 import { DEFAULTS } from '../assets/cardAssets';
 import { CardState } from './CardPreview';
 import { DateInput } from './DateInput';
+import { ThumbnailFoto } from './ThumbnailFoto';
 import { printMultipleCardsDirectly } from '../utils/printHelpers';
 import { normalizarFechaIso, isoADmy, dmyAIso } from '../utils/dateHelpers';
 import {
@@ -745,8 +747,8 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     setFotosStatus({ msg: 'Verificando fotos con la base de datos de Supabase…', kind: 'loading' });
 
     try {
-      // Obtener todos los registros (jugadores y árbitros) para cotejo inteligente
-      const todosLosRegistros = await obtenerTodosParaFotos();
+      // Obtener los registros (jugadores y árbitros) con búsqueda dirigida + jugadores del club actual
+      const todosLosRegistros = await buscarRegistrosParaArchivosFotos(files, jugadores);
 
       const parsed = files.map((f) => {
         const match = encontrarCoincidenciaDoc(f.name, todosLosRegistros);
@@ -1108,10 +1110,11 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                         />
                       </td>
                       <td>
-                        <img
-                          src={j.FotoArchivo || DEFAULTS.photo}
-                          className="thumb w-6 h-6 rounded-md object-cover"
-                          alt=""
+                        <ThumbnailFoto
+                          src={j.FotoArchivo}
+                          alt={`${j.Apellidos} ${j.Nombres}`}
+                          title={`${j.Apellidos} ${j.Nombres} (${j.NumeroDocumento})`}
+                          className="thumb w-6 h-6 rounded-md object-cover border border-[#dcdcd8]"
                         />
                       </td>
                       <td>
@@ -1341,11 +1344,19 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                 {/* Miniatura de la foto luego de subir foto */}
                 {(fotoBase64 || editingJugador?.FotoArchivo) && (
                   <div className="mt-2.5 flex items-center gap-3 p-2 bg-white rounded-lg border border-[#dcdcd8] shadow-2xs">
-                    <img
-                      src={fotoBase64 ? `data:${fotoMime};base64,${fotoBase64}` : editingJugador?.FotoArchivo || ''}
-                      alt="Miniatura"
-                      className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
-                    />
+                    {fotoBase64 ? (
+                      <img
+                        src={`data:${fotoMime};base64,${fotoBase64}`}
+                        alt="Miniatura"
+                        className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
+                      />
+                    ) : (
+                      <ThumbnailFoto
+                        src={editingJugador?.FotoArchivo}
+                        alt="Miniatura"
+                        className="w-12 h-14 object-cover rounded-md border border-[#dcdcd8] bg-slate-100 shadow-xs"
+                      />
+                    )}
                     <div className="text-xs">
                       <span className="font-bold text-[#1a1a1a] block truncate max-w-[200px]">{fotoName}</span>
                       <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">

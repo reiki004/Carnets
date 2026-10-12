@@ -10,6 +10,7 @@ import {
 } from '../services/supabaseService';
 import { DEFAULTS } from '../assets/cardAssets';
 import { CardPreview, CardState } from './CardPreview';
+import { ThumbnailFoto } from './ThumbnailFoto';
 import { isoADmy } from '../utils/dateHelpers';
 import { Search, Loader2, UserCheck, Eye, Printer, Download } from 'lucide-react';
 
@@ -272,7 +273,11 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
                         : 'border border-[#dcdcd8] hover:border-[#e11d2e]'
                     }`}
                   >
-                    <img src={foto} className="w-10 h-10 rounded-lg object-cover" alt="" />
+                    <ThumbnailFoto
+                      src={r.FotoArchivo}
+                      alt={`${r.Apellidos} ${r.Nombres}`}
+                      className="w-10 h-10 rounded-lg object-cover border border-[#dcdcd8]"
+                    />
                     <div className="info">
                       <b className="text-[#1a1a1a] dark:text-white font-extrabold flex items-center gap-1.5 text-xs">
                         {isJugador ? (
