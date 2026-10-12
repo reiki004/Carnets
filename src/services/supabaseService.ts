@@ -19,6 +19,7 @@ export interface Jugador {
   Nombres: string;
   FechaNacimiento: string | null;
   ClubID: string | null;
+  NombreClub?: string | null;
   Categoria: string | null;
   Categoria2: string | null;
   Estado: string | null;
@@ -190,6 +191,7 @@ export function jugadorRowToJs(row: any): Jugador {
     Nombres: row.nombres || '',
     FechaNacimiento: row.fecha_nacimiento || null,
     ClubID: row.club_id || null,
+    NombreClub: row.nombre_club || null,
     Categoria: row.categoria || null,
     Categoria2: row.categoria2 || null,
     Estado: normalizarEstado(row.estado),
@@ -198,18 +200,20 @@ export function jugadorRowToJs(row: any): Jugador {
 }
 
 export function jugadorJsToRow(o: Jugador): any {
-  return {
+  const row: any = {
     numero_documento: o.NumeroDocumento,
     tipo_documento: normalizarTipoDoc(o.TipoDocumento),
     apellidos: o.Apellidos,
     nombres: o.Nombres,
     fecha_nacimiento: o.FechaNacimiento || null,
     club_id: o.ClubID || null,
+    nombre_club: o.NombreClub || null,
     categoria: o.Categoria || null,
     categoria2: o.Categoria2 || null,
     estado: o.Estado || null,
     foto_url: o.FotoArchivo || null,
   };
+  return row;
 }
 
 export function adminRowToJs(row: any): Administrativo {

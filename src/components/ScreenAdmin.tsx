@@ -30,6 +30,7 @@ import {
   Download,
   CheckSquare,
   Image as ImageIcon,
+  X,
 } from 'lucide-react';
 
 interface ScreenAdminProps {
@@ -443,11 +444,22 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       setImportRows([]);
       setExcelCheckedIndices([]);
       setExcelName('ningún archivo elegido');
+      if (excelInputRef.current) excelInputRef.current.value = '';
       setImportStatus({ msg: `¡${validos.length} árbitro(s) importados exitosamente!`, kind: 'ok' });
       cargarTodosLosArbitros();
     } catch (err: any) {
       setImportStatus({ msg: 'Error al importar: ' + err.message, kind: 'err' });
     }
+  };
+
+  const handleCancelImportAdmin = () => {
+    setImportRows([]);
+    setExcelCheckedIndices([]);
+    setExcelName('ningún archivo elegido');
+    if (excelInputRef.current) {
+      excelInputRef.current.value = '';
+    }
+    setImportStatus({ msg: 'Importación cancelada.', kind: 'ok' });
   };
 
   // Carga Masiva Fotos para Árbitros (Carpeta o Archivos individuales)
@@ -1041,12 +1053,20 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                     ))}
                   </div>
 
-                  <button
-                    onClick={handleConfirmImportAdmin}
-                    className="file-btn text-xs font-bold w-full justify-center"
-                  >
-                    <Upload className="w-3.5 h-3.5" /> Confirmar importación de {excelCheckedIndices.length} árbitro(s)
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleConfirmImportAdmin}
+                      className="file-btn text-xs font-bold flex-1 justify-center"
+                    >
+                      <Upload className="w-3.5 h-3.5" /> Confirmar importación de {excelCheckedIndices.length} árbitro(s)
+                    </button>
+                    <button
+                      onClick={handleCancelImportAdmin}
+                      className="file-btn text-xs font-bold justify-center bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                    >
+                      <X className="w-3.5 h-3.5" /> Cancelar importación
+                    </button>
+                  </div>
                 </div>
               )}
 

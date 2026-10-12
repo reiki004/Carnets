@@ -134,7 +134,7 @@ export const ScreenBuscar: React.FC<ScreenBuscarProps> = ({
         tipo: 'socio',
         apellidos: j.Apellidos || 'APELLIDO',
         nombres: j.Nombres || 'NOMBRE',
-        clubname: club ? club.NombreClub : 'NOMBRE DEL CLUB',
+        clubname: club ? club.NombreClub : (j.NombreClub || 'NOMBRE DEL CLUB'),
         photoUrl: j.FotoArchivo || DEFAULTS.photo,
         photoScale: 100,
         photoOffsetX: 0,

@@ -30,6 +30,7 @@ import {
   FileSpreadsheet,
   Download,
   Check,
+  X,
   Eye,
   CheckSquare,
   Shield,
@@ -248,7 +249,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       tipo: 'socio',
       apellidos: j.Apellidos || 'APELLIDO',
       nombres: j.Nombres || 'NOMBRE',
-      clubname: club ? club.NombreClub : 'NOMBRE DEL CLUB',
+      clubname: club ? club.NombreClub : (j.NombreClub || 'NOMBRE DEL CLUB'),
       photoUrl: j.FotoArchivo || DEFAULTS.photo,
       photoScale: 100,
       photoOffsetX: 0,
@@ -352,6 +353,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
         fotoUrl = await subirImagenSupabase('fotos', `${num}.jpg`, fotoBase64, fotoMime);
       }
 
+      const clubActual = clubes.find((c) => c.ClubID === selectedClubId);
       const data: Jugador = {
         TipoDocumento: tipoDoc,
         NumeroDocumento: num,
@@ -359,6 +361,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
         Nombres: nombres.trim().toUpperCase(),
         FechaNacimiento: fechaIso,
         ClubID: selectedClubId,
+        NombreClub: clubActual ? clubActual.NombreClub : null,
         Categoria: cat1 || null,
         Categoria2: cat2 || null,
         Estado: normalizarEstado(estado),
@@ -596,20 +599,26 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
 
     setImportStatus({ msg: `Importando ${validos.length} jugadores válidos…`, kind: 'loading' });
     try {
-      const payload = validos.map((r) =>
-        jugadorJsToRow({
+      const payload = validos.map((r) => {
+        const clubObj =
+          clubes.find((c) => c.ClubID === r.__clubId) ||
+          clubes.find((c) => c.NombreClub.trim().toUpperCase() === (r.Club || '').trim().toUpperCase());
+        const resolvedClubName = clubObj ? clubObj.NombreClub : (r.Club ? r.Club.trim().toUpperCase() : null);
+
+        return jugadorJsToRow({
           TipoDocumento: r.TipoDocumento,
           NumeroDocumento: r.NumeroDocumento,
           Apellidos: r.Apellidos.toUpperCase(),
           Nombres: r.Nombres.toUpperCase(),
           FechaNacimiento: normalizarFechaIso(r.FechaNacimiento) || r.FechaNacimiento,
           ClubID: r.__clubId,
+          NombreClub: resolvedClubName,
           Categoria: r.__categoriaResuelta,
           Categoria2: null,
           Estado: r.__estadoResuelto,
           FotoArchivo: null,
-        })
-      );
+        });
+      });
 
       const { error } = await sb.from('jugadores').upsert(payload, {
         onConflict: 'numero_documento',
@@ -620,11 +629,22 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       setImportRows([]);
       setExcelCheckedIndices([]);
       setExcelName('ningún archivo elegido');
+      if (excelInputRef.current) excelInputRef.current.value = '';
       setImportStatus({ msg: `¡${validos.length} jugadores importados exitosamente!`, kind: 'ok' });
       loadJugadores();
     } catch (err: any) {
       setImportStatus({ msg: 'Error al importar: ' + err.message, kind: 'err' });
     }
+  };
+
+  const handleCancelImport = () => {
+    setImportRows([]);
+    setExcelCheckedIndices([]);
+    setExcelName('ningún archivo elegido');
+    if (excelInputRef.current) {
+      excelInputRef.current.value = '';
+    }
+    setImportStatus({ msg: 'Importación cancelada.', kind: 'ok' });
   };
 
   // Carga y procesamiento masivo de fotos (Archivos individuales o Carpeta)
@@ -1354,12 +1374,20 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
               )}
 
               {importRows.length > 0 && (
-                <button
-                  onClick={handleConfirmImport}
-                  className="file-btn text-xs font-bold"
-                >
-                  <Check className="w-3.5 h-3.5" /> Confirmar importación
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleConfirmImport}
+                    className="file-btn text-xs font-bold"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Confirmar importación
+                  </button>
+                  <button
+                    onClick={handleCancelImport}
+                    className="file-btn text-xs font-bold bg-white text-slate-700 hover:bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                  >
+                    <X className="w-3.5 h-3.5" /> Cancelar importación
+                  </button>
+                </div>
               )}
 
               {importStatus.msg && (

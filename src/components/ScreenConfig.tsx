@@ -154,6 +154,11 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
       );
       if (error) throw error;
 
+      // Sincronizar nombre_club en jugadores si el nombre cambió
+      if (existing && existing.NombreClub !== nombre) {
+        await sb.from('jugadores').update({ nombre_club: nombre }).eq('club_id', cId);
+      }
+
       // Actualizar categorías del club
       await sb.from('club_categorias').delete().eq('club_id', cId);
       if (clubCategorias.length) {
@@ -189,7 +194,7 @@ export const ScreenConfig: React.FC<ScreenConfigProps> = ({
 
     setClubStatus({ msg: 'Eliminando club…', kind: 'loading' });
     try {
-      await sb.from('jugadores').update({ club_id: null }).eq('club_id', selectedClubId);
+      await sb.from('jugadores').update({ club_id: null, nombre_club: null }).eq('club_id', selectedClubId);
       await sb.from('club_categorias').delete().eq('club_id', selectedClubId);
       const { error } = await sb.from('clubes').delete().eq('id', selectedClubId);
       if (error) throw error;
