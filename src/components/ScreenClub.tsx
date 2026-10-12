@@ -122,7 +122,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
   function esNombreValido(str: string): boolean {
     if (!str) return false;
     const trimmed = str.trim();
-    return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s\-]+$/.test(trimmed) && /[A-Za-zÁÉÍÓÚÜáéíóúüÑñ]/.test(trimmed);
+    return /^[\p{L}\s\-'’‘´]+$/u.test(trimmed) && /\p{L}/u.test(trimmed);
   }
 
   // Ordenar siempre la lista en orden alfabético de Apellidos y Nombres
@@ -329,11 +329,11 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       return;
     }
     if (!esNombreValido(apellidos)) {
-      setFormStatus({ msg: 'Apellidos solo debe contener letras, tildes, Ñ o guiones (-) para apellidos compuestos.', kind: 'err' });
+      setFormStatus({ msg: 'Apellidos solo debe contener letras, tildes, Ñ, diéresis (ü, ä, ö, ë), ç, apóstrofes o guiones (-).', kind: 'err' });
       return;
     }
     if (!esNombreValido(nombres)) {
-      setFormStatus({ msg: 'Nombres solo debe contener letras, tildes, Ñ o guiones (-).', kind: 'err' });
+      setFormStatus({ msg: 'Nombres solo debe contener letras, tildes, Ñ, diéresis (ü, ä, ö, ë), ç, apóstrofes o guiones (-).', kind: 'err' });
       return;
     }
     const fechaIso = dmyAIso(fnac);
@@ -506,7 +506,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       const validated = parsed.map((r) => {
         const motivos: string[] = [];
         if (!/^\d{8}$/.test(r.NumeroDocumento)) motivos.push('documento debe ser 8 dígitos numéricos');
-        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ y guion -)');
+        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ, diéresis, ç, apóstrofes y guion -)');
         if (!r.FechaNacimiento) motivos.push('fecha de nacimiento inválida (use formato DD/MM/AAAA o fecha estándar)');
 
         // Validación estricta: Club no puede ser NULL ni blanco, y debe existir

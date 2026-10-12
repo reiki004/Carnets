@@ -101,7 +101,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
   function esNombreValido(str: string): boolean {
     if (!str) return false;
     const trimmed = str.trim();
-    return /^[A-Za-zÁÉÍÓÚÜáéíóúüÑñ\s\-]+$/.test(trimmed) && /[A-Za-zÁÉÍÓÚÜáéíóúüÑñ]/.test(trimmed);
+    return /^[\p{L}\s\-'’‘´]+$/u.test(trimmed) && /\p{L}/u.test(trimmed);
   }
 
   // Carga inicial de árbitros para navegación directa
@@ -250,11 +250,11 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       return;
     }
     if (!esNombreValido(apellidos)) {
-      setStatus({ msg: 'Apellidos solo debe contener letras, tildes, Ñ o guiones (-) para apellidos compuestos.', kind: 'err' });
+      setStatus({ msg: 'Apellidos solo debe contener letras, tildes, Ñ, diéresis (ü, ä, ö, ë), ç, apóstrofes o guiones (-).', kind: 'err' });
       return;
     }
     if (!esNombreValido(nombres)) {
-      setStatus({ msg: 'Nombres solo debe contener letras, tildes, Ñ o guiones (-).', kind: 'err' });
+      setStatus({ msg: 'Nombres solo debe contener letras, tildes, Ñ, diéresis (ü, ä, ö, ë), ç, apóstrofes o guiones (-).', kind: 'err' });
       return;
     }
     const fechaIso = dmyAIso(fnac);
@@ -349,7 +349,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       const validated = parsed.map((r) => {
         const motivos: string[] = [];
         if (!/^\d{8}$/.test(r.NumeroDocumento)) motivos.push('documento debe ser 8 dígitos numéricos');
-        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ y guion -)');
+        if (!esNombreValido(r.Apellidos) || !esNombreValido(r.Nombres)) motivos.push('apellidos/nombres con caracteres inválidos (se aceptan letras, tildes, Ñ, diéresis, ç, apóstrofes y guion -)');
 
         // Validación de Terna:
         // Si es ÁRBITRO, se permite subir con el campo vacío en TERNA, pero valida que pertenezca a una terna existente si tiene valor
