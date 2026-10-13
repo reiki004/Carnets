@@ -542,6 +542,16 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       const { data: existingRows } = await sb.from('jugadores').select('numero_documento');
       const existingDocs = (existingRows || []).map((r: any) => String(r.numero_documento));
 
+      // Mapear repeticiones de documento dentro del propio archivo Excel
+      const excelDocMap = new Map<string, number[]>();
+      parsed.forEach((p) => {
+        if (p.NumeroDocumento) {
+          const list = excelDocMap.get(p.NumeroDocumento) || [];
+          list.push(p.__excelRow);
+          excelDocMap.set(p.NumeroDocumento, list);
+        }
+      });
+
       const validated = parsed.map((r, originalIdx) => {
         const motivos: string[] = [];
 
@@ -596,7 +606,23 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           if (!estEncontrado) motivos.push(`el estado "${r.Estado}" no existe`);
         }
 
-        const isDup = r.NumeroDocumento ? existingDocs.includes(r.NumeroDocumento) : false;
+        const otherExcelRows = r.NumeroDocumento
+          ? (excelDocMap.get(r.NumeroDocumento) || []).filter((rn) => rn !== r.__excelRow)
+          : [];
+        const isExcelDup = otherExcelRows.length > 0;
+        const isDbDup = r.NumeroDocumento ? existingDocs.includes(r.NumeroDocumento) : false;
+        const isDup = isDbDup || isExcelDup;
+
+        const observaciones: string[] = [];
+        if (isDbDup && isExcelDup) {
+          observaciones.push(
+            `Ya existe en el sistema y además este documento se repite en la fila ${otherExcelRows.join(', ')} del Excel (se actualizará)`
+          );
+        } else if (isDbDup) {
+          observaciones.push('Ya existe en el sistema (se actualizarán sus datos al confirmar)');
+        } else if (isExcelDup) {
+          observaciones.push(`Documento repetido dentro del archivo Excel (también aparece en fila ${otherExcelRows.join(', ')})`);
+        }
 
         return {
           ...r,
@@ -605,6 +631,10 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           __categoriaResuelta: catEncontrada || null,
           __estadoResuelto: estEncontrado || estNormal || 'SOCIO',
           __isDup: isDup,
+          __isDbDup: isDbDup,
+          __isExcelDup: isExcelDup,
+          __otherExcelRows: otherExcelRows,
+          __observaciones: observaciones,
           __motivos: motivos,
           __valid: motivos.length === 0,
         };
@@ -617,7 +647,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       );
 
       const errRows = validated.filter((r) => !r.__valid);
-      const obsRows = validated.filter((r) => r.__isDup);
+      const obsRows = validated.filter((r) => r.__isDup && r.__valid);
 
       let statusMsg = `${validated.length} registro(s) leído(s) del archivo Excel.`;
       if (errRows.length > 0) {
@@ -626,7 +656,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
       }
       if (obsRows.length > 0) {
         const obsList = obsRows.map((r) => `Fila ${r.__excelRow} (Reg. #${r.__registroNum})`).join(', ');
-        statusMsg += ` ℹ️ ${obsRows.length} fila(s) con OBSERVACIÓN (ya existe): ${obsList}.`;
+        statusMsg += ` ℹ️ ${obsRows.length} fila(s) con OBSERVACIÓN (ya existe o duplicado en archivo): ${obsList}.`;
       }
       if (errRows.length === 0 && obsRows.length === 0) {
         statusMsg += ` ✓ Todos los registros son válidos y listos para importar.`;
@@ -704,18 +734,49 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
         });
       });
 
-      const { error } = await sb.from('jugadores').upsert(payload, {
-        onConflict: 'numero_documento',
-        ignoreDuplicates: true,
-      });
-      if (error) throw error;
+      // Particionar payload en lotes con numero_documento único por lote para evitar
+      // el error de PostgreSQL: "ON CONFLICT DO UPDATE command cannot affect row a second time"
+      const batches: any[][] = [];
+      for (const item of payload) {
+        let placed = false;
+        for (const batch of batches) {
+          if (!batch.some((b) => b.numero_documento === item.numero_documento)) {
+            batch.push(item);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          batches.push([item]);
+        }
+      }
+
+      for (let b = 0; b < batches.length; b++) {
+        const batch = batches[b];
+        const { error } = await sb.from('jugadores').upsert(batch, {
+          onConflict: 'numero_documento',
+          ignoreDuplicates: false,
+        });
+        if (error) {
+          for (const item of batch) {
+            const { error: rowErr } = await sb.from('jugadores').upsert(item, {
+              onConflict: 'numero_documento',
+              ignoreDuplicates: false,
+            });
+            if (rowErr) throw new Error(`Documento ${item.numero_documento}: ${rowErr.message}`);
+          }
+        }
+      }
 
       setImportRows([]);
       setExcelCheckedIndices([]);
       setExcelFilter('todos');
       setExcelName('ningún archivo elegido');
       if (excelInputRef.current) excelInputRef.current.value = '';
-      setImportStatus({ msg: `¡${validos.length} jugadores importados exitosamente!`, kind: 'ok' });
+      setImportStatus({
+        msg: `¡${validos.length} jugadores importados exitosamente!${batches.length > 1 ? ' (filas repetidas resueltas correctamente)' : ''}`,
+        kind: 'ok',
+      });
       loadJugadores();
     } catch (err: any) {
       setImportStatus({ msg: 'Error al importar: ' + err.message, kind: 'err' });
@@ -1520,7 +1581,7 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                                 {!r.__valid ? (
                                   <span>⚠️ <strong>Error en Fila {r.__excelRow}:</strong> {r.__motivos.join('; ')}</span>
                                 ) : (
-                                  <span>ℹ️ <strong>Observación en Fila {r.__excelRow}:</strong> DNI {r.NumeroDocumento} ya existe en el sistema (se actualizará)</span>
+                                  <span>ℹ️ <strong>Observación en Fila {r.__excelRow}:</strong> {(r.__observaciones && r.__observaciones.length > 0) ? r.__observaciones.join('; ') : `DNI ${r.NumeroDocumento} ya existe en el sistema (se actualizará)`}</span>
                                 )}
                               </div>
                             </div>
@@ -1570,14 +1631,23 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                                 {r.FechaNacimiento && (
                                   <span className="text-slate-500">· F.Nac: {isoADmy(r.FechaNacimiento)}</span>
                                 )}
+                                {r.__isDup && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 font-semibold px-1 rounded">
+                                    {r.__isExcelDup && r.__isDbDup
+                                      ? 'Existe y duplicado en Excel'
+                                      : r.__isExcelDup
+                                      ? 'Duplicado en Excel'
+                                      : 'Ya existe (se actualizará)'}
+                                  </span>
+                                )}
                               </div>
                               {!r.__valid ? (
                                 <small className="block text-red-600 dark:text-red-400 font-semibold mt-1">
                                   ⚠️ <strong>Fila Excel #{r.__excelRow} [Error]:</strong> {r.__motivos.join('; ')}
                                 </small>
-                              ) : r.__isDup ? (
+                              ) : r.__isDup && r.__valid ? (
                                 <small className="block text-amber-600 dark:text-amber-400 font-medium mt-1">
-                                  ℹ️ <strong>Fila Excel #{r.__excelRow} [Observación]:</strong> Duplicado en la base (se actualizará)
+                                  ℹ️ <strong>Fila Excel #{r.__excelRow} [Observación]:</strong> {(r.__observaciones && r.__observaciones.length > 0) ? r.__observaciones.join('; ') : 'Ya existe (se actualizará)'}
                                 </small>
                               ) : null}
                             </div>

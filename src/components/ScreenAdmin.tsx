@@ -385,6 +385,16 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       const { data: existingRows } = await sb.from('administrativos').select('numero_documento');
       const existingDocs = (existingRows || []).map((r: any) => String(r.numero_documento));
 
+      // Mapear repeticiones de documento dentro del propio archivo Excel
+      const excelDocMap = new Map<string, number[]>();
+      parsed.forEach((p) => {
+        if (p.NumeroDocumento) {
+          const list = excelDocMap.get(p.NumeroDocumento) || [];
+          list.push(p.__excelRow);
+          excelDocMap.set(p.NumeroDocumento, list);
+        }
+      });
+
       const validated = parsed.map((r, originalIdx) => {
         const motivos: string[] = [];
 
@@ -417,13 +427,33 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           ternaResuelta = null;
         }
 
-        const isDup = r.NumeroDocumento ? existingDocs.includes(r.NumeroDocumento) : false;
+        const otherExcelRows = r.NumeroDocumento
+          ? (excelDocMap.get(r.NumeroDocumento) || []).filter((rn) => rn !== r.__excelRow)
+          : [];
+        const isExcelDup = otherExcelRows.length > 0;
+        const isDbDup = r.NumeroDocumento ? existingDocs.includes(r.NumeroDocumento) : false;
+        const isDup = isDbDup || isExcelDup;
+
+        const observaciones: string[] = [];
+        if (isDbDup && isExcelDup) {
+          observaciones.push(
+            `Ya existe en el sistema y además este documento se repite en la fila ${otherExcelRows.join(', ')} del Excel (se actualizará)`
+          );
+        } else if (isDbDup) {
+          observaciones.push('Ya existe en el sistema (se actualizarán sus datos al confirmar)');
+        } else if (isExcelDup) {
+          observaciones.push(`Documento repetido dentro del archivo Excel (también aparece en la fila ${otherExcelRows.join(', ')})`);
+        }
 
         return {
           ...r,
           __index: originalIdx,
           __ternaResuelta: ternaResuelta,
           __isDup: isDup,
+          __isDbDup: isDbDup,
+          __isExcelDup: isExcelDup,
+          __otherExcelRows: otherExcelRows,
+          __observaciones: observaciones,
           __motivos: motivos,
           __valid: motivos.length === 0,
         };
@@ -435,7 +465,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       );
 
       const errRows = validated.filter((r) => !r.__valid);
-      const obsRows = validated.filter((r) => r.__isDup);
+      const obsRows = validated.filter((r) => r.__isDup && r.__valid);
 
       let statusMsg = `${validated.length} registro(s) leído(s) del archivo Excel.`;
       if (errRows.length > 0) {
@@ -444,7 +474,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       }
       if (obsRows.length > 0) {
         const obsList = obsRows.map((r) => `Fila ${r.__excelRow} (Reg. #${r.__registroNum})`).join(', ');
-        statusMsg += ` ℹ️ ${obsRows.length} fila(s) con OBSERVACIÓN (ya existe): ${obsList}.`;
+        statusMsg += ` ℹ️ ${obsRows.length} fila(s) con OBSERVACIÓN (ya existe o duplicado en archivo): ${obsList}.`;
       }
       if (errRows.length === 0 && obsRows.length === 0) {
         statusMsg += ` ✓ Todos los registros son válidos y listos para importar.`;
@@ -515,18 +545,51 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
         })
       );
 
-      const { error } = await sb.from('administrativos').upsert(payload, {
-        onConflict: 'numero_documento',
-        ignoreDuplicates: false,
-      });
-      if (error) throw error;
+      // Particionar payload en lotes con numero_documento único por lote para evitar
+      // el error de PostgreSQL: "ON CONFLICT DO UPDATE command cannot affect row a second time"
+      // que ocurre cuando el mismo documento aparece más de una vez en el mismo batch/statement.
+      const batches: any[][] = [];
+      for (const item of payload) {
+        let placed = false;
+        for (const batch of batches) {
+          if (!batch.some((b) => b.numero_documento === item.numero_documento)) {
+            batch.push(item);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          batches.push([item]);
+        }
+      }
+
+      for (let b = 0; b < batches.length; b++) {
+        const batch = batches[b];
+        const { error } = await sb.from('administrativos').upsert(batch, {
+          onConflict: 'numero_documento',
+          ignoreDuplicates: false,
+        });
+        if (error) {
+          // Si por alguna razón de constraint falla el lote, intentar fila a fila para aislar el registro
+          for (const item of batch) {
+            const { error: rowErr } = await sb.from('administrativos').upsert(item, {
+              onConflict: 'numero_documento',
+              ignoreDuplicates: false,
+            });
+            if (rowErr) throw new Error(`Documento ${item.numero_documento}: ${rowErr.message}`);
+          }
+        }
+      }
 
       setImportRows([]);
       setExcelCheckedIndices([]);
       setExcelFilterAdmin('todos');
       setExcelName('ningún archivo elegido');
       if (excelInputRef.current) excelInputRef.current.value = '';
-      setImportStatus({ msg: `¡${validos.length} árbitro(s) importados exitosamente!`, kind: 'ok' });
+      setImportStatus({
+        msg: `¡${validos.length} árbitro(s) importados exitosamente!${batches.length > 1 ? ' (filas repetidas resueltas correctamente)' : ''}`,
+        kind: 'ok',
+      });
       cargarTodosLosArbitros();
     } catch (err: any) {
       setImportStatus({ msg: 'Error al importar: ' + err.message, kind: 'err' });
@@ -1189,7 +1252,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                                 {!r.__valid ? (
                                   <span>⚠️ <strong>Error en Fila {r.__excelRow}:</strong> {r.__motivos.join('; ')}</span>
                                 ) : (
-                                  <span>ℹ️ <strong>Observación en Fila {r.__excelRow}:</strong> Ya existe en el sistema (se actualizará)</span>
+                                  <span>ℹ️ <strong>Observación en Fila {r.__excelRow}:</strong> {(r.__observaciones && r.__observaciones.length > 0) ? r.__observaciones.join('; ') : 'Ya existe en el sistema (se actualizará)'}</span>
                                 )}
                               </div>
                             </div>
@@ -1245,7 +1308,11 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                                 )}
                                 {r.__isDup && (
                                   <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1 rounded">
-                                    Ya existe (se actualizará)
+                                    {r.__isExcelDup && r.__isDbDup
+                                      ? 'Existe y duplicado en Excel'
+                                      : r.__isExcelDup
+                                      ? 'Duplicado en Excel'
+                                      : 'Ya existe (se actualizará)'}
                                   </span>
                                 )}
                               </div>
@@ -1254,9 +1321,9 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                                   ⚠️ <strong>Fila Excel #{r.__excelRow} [Error]:</strong> {r.__motivos.join(', ')}
                                 </div>
                               )}
-                              {r.__isDup && (
+                              {r.__isDup && r.__valid && (
                                 <div className="text-[10.5px] text-amber-700 font-medium mt-0.5">
-                                  ℹ️ <strong>Fila Excel #{r.__excelRow} [Observación]:</strong> Ya existe (se actualizarán sus datos al confirmar)
+                                  ℹ️ <strong>Fila Excel #{r.__excelRow} [Observación]:</strong> {(r.__observaciones && r.__observaciones.length > 0) ? r.__observaciones.join('; ') : 'Ya existe (se actualizarán sus datos al confirmar)'}
                                 </div>
                               )}
                             </div>
