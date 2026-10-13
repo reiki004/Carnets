@@ -28,11 +28,13 @@ export const ThumbnailFoto: React.FC<ThumbnailFotoProps> = ({
   const [currentSrc, setCurrentSrc] = useState<string>(cleanInitial);
   const [hasTriedClean, setHasTriedClean] = useState(false);
   const [hasTriedRetry, setHasTriedRetry] = useState(false);
+  const [hasTriedAltFormat, setHasTriedAltFormat] = useState(false);
 
   useEffect(() => {
     setCurrentSrc(src ? src.split('?')[0] : DEFAULTS.photo);
     setHasTriedClean(false);
     setHasTriedRetry(false);
+    setHasTriedAltFormat(false);
   }, [src]);
 
   const handleError = () => {
@@ -47,14 +49,28 @@ export const ThumbnailFoto: React.FC<ThumbnailFotoProps> = ({
       return;
     }
 
-    // 2. Si la URL limpia falló, probar un reintento con timestamp nuevo para invalidar caché
+    // 2. Si tenía formato _admin.jpg y falló, probar con el formato unificado .jpg
+    if (!hasTriedAltFormat && currentSrc.includes('_admin.jpg')) {
+      setHasTriedAltFormat(true);
+      setCurrentSrc(currentSrc.replace('_admin.jpg', '.jpg'));
+      return;
+    }
+
+    // 3. Si tenía formato .jpg y falló, probar con _admin.jpg por compatibilidad histórica
+    if (!hasTriedAltFormat && currentSrc.includes('.jpg') && !currentSrc.includes('_admin.jpg')) {
+      setHasTriedAltFormat(true);
+      setCurrentSrc(currentSrc.replace('.jpg', '_admin.jpg'));
+      return;
+    }
+
+    // 4. Si la URL falló, probar un reintento con timestamp nuevo para invalidar caché
     if (!hasTriedRetry) {
       setHasTriedRetry(true);
       setCurrentSrc(`${currentSrc.split('?')[0]}?retry=${Date.now()}`);
       return;
     }
 
-    // 3. Fallback seguro a la silueta por defecto de la aplicación
+    // 5. Fallback seguro a la silueta por defecto de la aplicación
     setCurrentSrc(DEFAULTS.photo);
   };
 

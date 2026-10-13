@@ -271,7 +271,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     try {
       let fotoUrl = editingAdmin ? editingAdmin.FotoArchivo : null;
       if (fotoBase64) {
-        fotoUrl = await subirImagenSupabase('fotos', `${doc}_admin.jpg`, fotoBase64, fotoMime);
+        fotoUrl = await subirImagenSupabase('fotos', `${doc}.jpg`, fotoBase64, fotoMime);
       }
 
       const ternaFinal = isArbitro ? terna.trim().toUpperCase() : '';
@@ -733,6 +733,15 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           return a;
         })
       );
+
+      if (editingAdmin) {
+        const direct = urlMap.get(editingAdmin.NumeroDocumento) || urlMap.get(editingAdmin.NumeroDocumento.replace(/^0+/, ''));
+        if (direct) {
+          const updated = { ...editingAdmin, FotoArchivo: direct };
+          setEditingAdmin(updated);
+          onOpenCardModal(generarCardStateAdmin(updated));
+        }
+      }
     }
 
     setFotosStatus({

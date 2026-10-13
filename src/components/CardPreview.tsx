@@ -244,6 +244,10 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                   className="f-photo-img"
                   onError={(e) => {
                     const target = e.currentTarget as HTMLImageElement;
+                    if (target.src.includes('_admin.jpg')) {
+                      target.src = target.src.replace('_admin.jpg', '.jpg');
+                      return;
+                    }
                     if (target.src !== DEFAULTS.photo) {
                       target.src = DEFAULTS.photo;
                     }

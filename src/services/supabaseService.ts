@@ -630,7 +630,9 @@ export async function subirYEnlazarFoto(
   exactDoc: string,
   tabla: 'jugadores' | 'administrativos'
 ): Promise<string> {
-  const path = tabla === 'administrativos' ? `${exactDoc}_admin.jpg` : `${exactDoc}.jpg`;
+  // Guardar con el mismo formato de nombre asociado al documento (${exactDoc}.jpg)
+  // en la misma fuente común (bucket 'fotos') tanto para jugadores como para árbitros
+  const path = `${exactDoc}.jpg`;
   const mime = file.type || 'image/jpeg';
 
   // 1. Subir directamente el File/Blob a Supabase Storage (rápido y sin base64 intermedio)
