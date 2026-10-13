@@ -808,8 +808,8 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
     setFotosStatus({ msg: 'Verificando fotos con la base de datos de Supabase…', kind: 'loading' });
 
     try {
-      // Obtener los registros (jugadores y árbitros) con búsqueda dirigida + jugadores del club actual
-      const todosLosRegistros = await buscarRegistrosParaArchivosFotos(files, jugadores);
+      // Obtener exclusivamente los registros de jugadores del club actual y la base de datos de jugadores
+      const todosLosRegistros = await buscarRegistrosParaArchivosFotos(files, jugadores, 'jugadores');
 
       const parsed = files.map((f) => {
         const match = encontrarCoincidenciaDoc(f.name, todosLosRegistros);
@@ -821,12 +821,12 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
           doc: match ? match.exactDoc : f.name.replace(/\.[^.]+$/, '').trim(),
           matched: !!match,
           checked: !!match,
-          tabla: match ? match.tabla : (fotosMasivasTipo as 'jugadores' | 'administrativos'),
+          tabla: 'jugadores' as const,
           matchedPerson: match
             ? {
                 exactDoc: match.exactDoc,
                 nombreCompleto: match.nombreCompleto,
-                tabla: match.tabla,
+                tabla: 'jugadores' as const,
               }
             : undefined,
         };
@@ -1807,11 +1807,11 @@ export const ScreenClub: React.FC<ScreenClubProps> = ({
                           </div>
                           {p.matched ? (
                             <div className="text-[11px] text-emerald-700 font-bold truncate">
-                              ✓ [{p.doc}] {p.matchedPerson?.nombreCompleto} <span className="text-[10px] uppercase font-semibold text-emerald-600">({p.tabla === 'administrativos' ? 'Árbitro' : 'Jugador'})</span>
+                              ✓ [{p.doc}] {p.matchedPerson?.nombreCompleto} <span className="text-[10px] uppercase font-semibold text-emerald-600">(Jugador)</span>
                             </div>
                           ) : (
                             <div className="text-[10.5px] text-red-600 font-medium italic">
-                              ✗ No coincide con ningún DNI registrado
+                              ✗ No coincide con ningún jugador registrado
                             </div>
                           )}
                         </div>

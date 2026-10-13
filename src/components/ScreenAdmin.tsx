@@ -618,14 +618,16 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
       return;
     }
 
-    setFotosStatus({ msg: 'Verificando fotos con la base de datos de Supabase…', kind: 'loading' });
+    setFotosStatus({ msg: 'Verificando fotos con la base de datos de árbitros y personal administrativo…', kind: 'loading' });
 
     try {
-      const todosLosRegistros = await buscarRegistrosParaArchivosFotos(files, searchResults);
+      // Analizar estrictamente solo con la base de datos de árbitros, administrativos, presidentes de mesa, etc.
+      const todosLosRegistros = await buscarRegistrosParaArchivosFotos(files, searchResults, 'administrativos');
 
       const parsed = files.map((f) => {
         const match = encontrarCoincidenciaDoc(f.name, todosLosRegistros);
         const previewUrl = URL.createObjectURL(f);
+        const cargoEncontrado = match?.row?.club_cargo || match?.row?.ClubCargo || 'Árbitro / Personal';
         return {
           file: f,
           fileName: f.name,
@@ -633,12 +635,14 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
           doc: match ? match.exactDoc : f.name.replace(/\.[^.]+$/, '').trim(),
           matched: !!match,
           checked: !!match,
-          tabla: match ? match.tabla : ('administrativos' as const),
+          tabla: 'administrativos' as const,
+          cargo: cargoEncontrado,
           matchedPerson: match
             ? {
                 exactDoc: match.exactDoc,
                 nombreCompleto: match.nombreCompleto,
-                tabla: match.tabla,
+                tabla: 'administrativos' as const,
+                cargo: cargoEncontrado,
               }
             : undefined,
         };
@@ -649,14 +653,14 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
 
       if (coincidentes === 0) {
         setFotosStatus({
-          msg: `0 de ${files.length} fotos coinciden con el DNI de árbitros registrados. Revisa que el nombre de cada foto sea el número de documento.`,
+          msg: `0 de ${files.length} fotos coinciden con árbitros, administrativos o presidentes de mesa registrados en esta sección. Revisa que el nombre de cada foto sea el número de documento.`,
           kind: 'err',
         });
         return;
       }
 
       setFotosStatus({
-        msg: `${coincidentes} de ${files.length} fotos coinciden con personas registradas. ${autoSubirFotos ? 'Iniciando subida automática a Supabase…' : 'Listas para subir.'}`,
+        msg: `${coincidentes} de ${files.length} fotos coinciden con la base de datos de la sección Árbitros. ${autoSubirFotos ? 'Iniciando subida automática a Supabase…' : 'Listas para subir.'}`,
         kind: 'ok',
       });
 
@@ -1483,11 +1487,11 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
                           </div>
                           {p.matched ? (
                             <div className="text-[11px] text-emerald-700 font-bold truncate">
-                              ✓ [{p.doc}] {p.matchedPerson?.nombreCompleto} <span className="text-[10px] uppercase font-semibold text-emerald-600">({p.tabla === 'administrativos' ? 'Árbitro' : 'Jugador'})</span>
+                              ✓ [{p.doc}] {p.matchedPerson?.nombreCompleto} <span className="text-[10px] uppercase font-semibold text-emerald-600">({p.cargo || 'Árbitro / Personal'})</span>
                             </div>
                           ) : (
                             <div className="text-[10.5px] text-red-600 font-medium italic">
-                              ✗ No coincide con ningún árbitro registrado
+                              ✗ No coincide con ningún árbitro, administrativo ni presidente de mesa registrado
                             </div>
                           )}
                         </div>

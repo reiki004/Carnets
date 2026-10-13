@@ -414,7 +414,9 @@ export async function subirImagenSupabase(
  * Obtiene todos los jugadores y administrativos registrados paginando de 1000 en 1000
  * para evitar el límite de truncamiento de PostgREST y abarcar la totalidad de registros.
  */
-export async function obtenerTodosParaFotos(): Promise<Array<{
+export async function obtenerTodosParaFotos(
+  tipoTabla: 'todos' | 'administrativos' | 'jugadores' = 'todos'
+): Promise<Array<{
   numero_documento: string;
   apellidos: string;
   nombres: string;
@@ -423,54 +425,59 @@ export async function obtenerTodosParaFotos(): Promise<Array<{
   foto_url?: string | null;
   __tabla: 'jugadores' | 'administrativos';
 }>> {
-  // Paginación en bloques de 1000 para traer todos los jugadores de Supabase
-  const allJug: any[] = [];
-  let fromJug = 0;
-  const chunkSize = 1000;
-  while (true) {
-    const { data, error } = await sb
-      .from('jugadores')
-      .select('numero_documento, apellidos, nombres, club_id, foto_url')
-      .range(fromJug, fromJug + chunkSize - 1);
-    if (error || !data || data.length === 0) break;
-    allJug.push(...data);
-    if (data.length < chunkSize) break;
-    fromJug += chunkSize;
+  const result: any[] = [];
+
+  // Paginación en bloques de 1000 para traer todos los jugadores de Supabase (solo si aplica)
+  if (tipoTabla === 'todos' || tipoTabla === 'jugadores') {
+    let fromJug = 0;
+    const chunkSize = 1000;
+    while (true) {
+      const { data, error } = await sb
+        .from('jugadores')
+        .select('numero_documento, apellidos, nombres, club_id, foto_url')
+        .range(fromJug, fromJug + chunkSize - 1);
+      if (error || !data || data.length === 0) break;
+      result.push(
+        ...data.map((j: any) => ({
+          numero_documento: String(j.numero_documento || '').trim(),
+          apellidos: String(j.apellidos || '').trim(),
+          nombres: String(j.nombres || '').trim(),
+          club_id: j.club_id || null,
+          foto_url: limpiarUrlFoto(j.foto_url),
+          __tabla: 'jugadores' as const,
+        }))
+      );
+      if (data.length < chunkSize) break;
+      fromJug += chunkSize;
+    }
   }
 
-  // Paginación para administrativos / árbitros
-  const allAdm: any[] = [];
-  let fromAdm = 0;
-  while (true) {
-    const { data, error } = await sb
-      .from('administrativos')
-      .select('numero_documento, apellidos, nombres, club_cargo, foto_url')
-      .range(fromAdm, fromAdm + chunkSize - 1);
-    if (error || !data || data.length === 0) break;
-    allAdm.push(...data);
-    if (data.length < chunkSize) break;
-    fromAdm += chunkSize;
+  // Paginación para administrativos / árbitros (solo si aplica)
+  if (tipoTabla === 'todos' || tipoTabla === 'administrativos') {
+    let fromAdm = 0;
+    const chunkSize = 1000;
+    while (true) {
+      const { data, error } = await sb
+        .from('administrativos')
+        .select('numero_documento, apellidos, nombres, club_cargo, foto_url')
+        .range(fromAdm, fromAdm + chunkSize - 1);
+      if (error || !data || data.length === 0) break;
+      result.push(
+        ...data.map((a: any) => ({
+          numero_documento: String(a.numero_documento || '').trim(),
+          apellidos: String(a.apellidos || '').trim(),
+          nombres: String(a.nombres || '').trim(),
+          club_cargo: a.club_cargo || null,
+          foto_url: limpiarUrlFoto(a.foto_url),
+          __tabla: 'administrativos' as const,
+        }))
+      );
+      if (data.length < chunkSize) break;
+      fromAdm += chunkSize;
+    }
   }
 
-  const jugList = allJug.map((j: any) => ({
-    numero_documento: String(j.numero_documento || '').trim(),
-    apellidos: String(j.apellidos || '').trim(),
-    nombres: String(j.nombres || '').trim(),
-    club_id: j.club_id || null,
-    foto_url: limpiarUrlFoto(j.foto_url),
-    __tabla: 'jugadores' as const,
-  }));
-
-  const admList = allAdm.map((a: any) => ({
-    numero_documento: String(a.numero_documento || '').trim(),
-    apellidos: String(a.apellidos || '').trim(),
-    nombres: String(a.nombres || '').trim(),
-    club_cargo: a.club_cargo || null,
-    foto_url: limpiarUrlFoto(a.foto_url),
-    __tabla: 'administrativos' as const,
-  }));
-
-  return [...jugList, ...admList];
+  return result;
 }
 
 /**
@@ -482,7 +489,8 @@ export async function obtenerTodosParaFotos(): Promise<Array<{
  */
 export async function buscarRegistrosParaArchivosFotos(
   files: File[],
-  registrosLocales: any[] = []
+  registrosLocales: any[] = [],
+  tipoTabla: 'todos' | 'administrativos' | 'jugadores' = 'todos'
 ): Promise<Array<{
   numero_documento: string;
   apellidos: string;
@@ -494,10 +502,17 @@ export async function buscarRegistrosParaArchivosFotos(
 }>> {
   const mapPorDoc = new Map<string, any>();
 
-  // 1. Agregar registros locales ya cargados en pantalla
+  // 1. Agregar registros locales ya cargados en pantalla (filtrando si aplica)
   for (const r of registrosLocales) {
     const doc = String(r.NumeroDocumento || r.numero_documento || '').trim();
     if (doc) {
+      const tablaRow: 'jugadores' | 'administrativos' =
+        r.__tabla || (r.ClubCargo !== undefined || r.club_cargo !== undefined || r.Tipo === 'Árbitro' ? 'administrativos' : 'jugadores');
+
+      if (tipoTabla !== 'todos' && tablaRow !== tipoTabla) {
+        continue;
+      }
+
       mapPorDoc.set(doc, {
         numero_documento: doc,
         apellidos: String(r.Apellidos || r.apellidos || '').trim(),
@@ -505,7 +520,7 @@ export async function buscarRegistrosParaArchivosFotos(
         club_id: r.ClubID || r.club_id || null,
         club_cargo: r.ClubCargo || r.club_cargo || null,
         foto_url: limpiarUrlFoto(r.FotoArchivo || r.foto_url),
-        __tabla: r.__tabla || (r.ClubCargo !== undefined || r.club_cargo !== undefined || r.Tipo === 'Árbitro' ? 'administrativos' : 'jugadores'),
+        __tabla: tablaRow,
       });
     }
   }
@@ -535,50 +550,68 @@ export async function buscarRegistrosParaArchivosFotos(
   const candidateDocs = Array.from(candidateDocsSet).filter((d) => d.length >= 4);
 
   // 3. Consultar específicamente en Supabase para todos los documentos candidatos (en bloques de 200)
+  // Filtrando estrictamente por tipoTabla (administrativos, jugadores o ambos)
   if (candidateDocs.length > 0) {
     const chunkSize = 200;
     for (let i = 0; i < candidateDocs.length; i += chunkSize) {
       const slice = candidateDocs.slice(i, i + chunkSize);
-      const [resJug, resAdm] = await Promise.all([
-        sb.from('jugadores').select('numero_documento, apellidos, nombres, club_id, foto_url').in('numero_documento', slice),
-        sb.from('administrativos').select('numero_documento, apellidos, nombres, club_cargo, foto_url').in('numero_documento', slice),
-      ]);
+      const includeJug = tipoTabla === 'todos' || tipoTabla === 'jugadores';
+      const includeAdm = tipoTabla === 'todos' || tipoTabla === 'administrativos';
 
-      (resJug.data || []).forEach((j: any) => {
-        const d = String(j.numero_documento || '').trim();
-        if (d && !mapPorDoc.has(d)) {
-          mapPorDoc.set(d, {
-            numero_documento: d,
-            apellidos: String(j.apellidos || '').trim(),
-            nombres: String(j.nombres || '').trim(),
-            club_id: j.club_id || null,
-            foto_url: limpiarUrlFoto(j.foto_url),
-            __tabla: 'jugadores',
-          });
-        }
-      });
+      const promises: PromiseLike<any>[] = [];
+      if (includeJug) {
+        promises.push(
+          sb.from('jugadores').select('numero_documento, apellidos, nombres, club_id, foto_url').in('numero_documento', slice)
+        );
+      }
+      if (includeAdm) {
+        promises.push(
+          sb.from('administrativos').select('numero_documento, apellidos, nombres, club_cargo, foto_url').in('numero_documento', slice)
+        );
+      }
 
-      (resAdm.data || []).forEach((a: any) => {
-        const d = String(a.numero_documento || '').trim();
-        if (d && !mapPorDoc.has(d)) {
-          mapPorDoc.set(d, {
-            numero_documento: d,
-            apellidos: String(a.apellidos || '').trim(),
-            nombres: String(a.nombres || '').trim(),
-            club_cargo: a.club_cargo || null,
-            foto_url: limpiarUrlFoto(a.foto_url),
-            __tabla: 'administrativos',
-          });
-        }
-      });
+      const results = await Promise.all(promises);
+      let pIdx = 0;
+      if (includeJug) {
+        const resJug = results[pIdx++];
+        (resJug?.data || []).forEach((j: any) => {
+          const d = String(j.numero_documento || '').trim();
+          if (d && !mapPorDoc.has(d)) {
+            mapPorDoc.set(d, {
+              numero_documento: d,
+              apellidos: String(j.apellidos || '').trim(),
+              nombres: String(j.nombres || '').trim(),
+              club_id: j.club_id || null,
+              foto_url: limpiarUrlFoto(j.foto_url),
+              __tabla: 'jugadores',
+            });
+          }
+        });
+      }
+
+      if (includeAdm) {
+        const resAdm = results[pIdx++];
+        (resAdm?.data || []).forEach((a: any) => {
+          const d = String(a.numero_documento || '').trim();
+          if (d && !mapPorDoc.has(d)) {
+            mapPorDoc.set(d, {
+              numero_documento: d,
+              apellidos: String(a.apellidos || '').trim(),
+              nombres: String(a.nombres || '').trim(),
+              club_cargo: a.club_cargo || null,
+              foto_url: limpiarUrlFoto(a.foto_url),
+              __tabla: 'administrativos',
+            });
+          }
+        });
+      }
     }
   }
 
-  // 4. Si hay archivos que no se encontraron por documento (ej. fotos con nombres de personas sin DNI),
-  // traer la lista completa paginada
+  // 4. Si hay archivos que no se encontraron por documento, traer la lista paginada filtrada
   const fotosSinCoincidencia = files.filter((f) => !encontrarCoincidenciaDoc(f.name, Array.from(mapPorDoc.values())));
   if (fotosSinCoincidencia.length > 0) {
-    const todos = await obtenerTodosParaFotos();
+    const todos = await obtenerTodosParaFotos(tipoTabla);
     for (const r of todos) {
       if (!mapPorDoc.has(r.numero_documento)) {
         mapPorDoc.set(r.numero_documento, r);
