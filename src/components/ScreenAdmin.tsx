@@ -108,17 +108,24 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     return /^[\p{L}\s\-'’‘´]+$/u.test(trimmed) && /\p{L}/u.test(trimmed);
   }
 
-  // Carga inicial de árbitros para navegación directa
+  // Carga completa de todos los árbitros y directivos para navegación y filtrado sin cortes
   const cargarTodosLosArbitros = async () => {
     try {
-      const { data, error } = await sb
-        .from('administrativos')
-        .select('*')
-        .order('apellidos')
-        .limit(100);
-      if (!error && data) {
-        setSearchResults(data.map(adminRowToJs));
+      const all: any[] = [];
+      let from = 0;
+      const step = 1000;
+      while (true) {
+        const { data, error } = await sb
+          .from('administrativos')
+          .select('*')
+          .order('apellidos')
+          .range(from, from + step - 1);
+        if (error || !data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < step) break;
+        from += step;
       }
+      setSearchResults(all.map(adminRowToJs));
     } catch (err) {
       console.warn('Error al cargar árbitros:', err);
     }
@@ -173,26 +180,38 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
   const handleBuscar = async () => {
     const q = searchQuery.trim();
     if (!q) {
-      cargarTodosLosArbitros();
+      await cargarTodosLosArbitros();
       setStatus({ msg: 'Mostrando listado general.', kind: 'ok' });
       return;
     }
+
+    const count = arbitrosFiltrados.length;
+    if (count > 0) {
+      setStatus({ msg: `${count} resultado(s) encontrado(s).`, kind: 'ok' });
+      return;
+    }
+
     setStatus({ msg: 'Buscando en árbitros…', kind: 'loading' });
     try {
       const { data, error } = await sb
         .from('administrativos')
         .select('*')
-        .or(`numero_documento.ilike.%${q}%,apellidos.ilike.%${q}%,nombres.ilike.%${q}%`)
-        .limit(30);
+        .or(`numero_documento.ilike.%${q}%,apellidos.ilike.%${q}%,nombres.ilike.%${q}%`);
 
       if (error) throw error;
       const list = (data || []).map(adminRowToJs);
       if (!list.length) {
-        setStatus({ msg: 'Sin resultados.', kind: 'err' });
-        setSearchResults([]);
+        setStatus({ msg: 'Sin resultados para la búsqueda.', kind: 'err' });
         return;
       }
-      setSearchResults(list);
+
+      setSearchResults((prev) => {
+        const map = new Map(prev.map((p) => [p.NumeroDocumento, p]));
+        list.forEach((n) => map.set(n.NumeroDocumento, n));
+        return Array.from(map.values()).sort((a, b) =>
+          (a.Apellidos || '').localeCompare(b.Apellidos || '')
+        );
+      });
       setStatus({ msg: `${list.length} resultado(s) encontrado(s).`, kind: 'ok' });
     } catch (err: any) {
       setStatus({ msg: 'Error al buscar: ' + err.message, kind: 'err' });
@@ -758,12 +777,48 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
     await ejecutarSubidaFotosAdmin(seleccionadas);
   };
 
-  // Filtrado por terna arbitral en el directorio
-  const arbitrosFiltrados = searchResults.filter((r) => {
-    if (!filtroTerna) return true;
-    const t = (r.Terna || r.Categoria || '').toUpperCase();
-    return t === filtroTerna.toUpperCase();
-  });
+  const normalizarTexto = (str?: string | null) => {
+    if (!str) return '';
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase();
+  };
+
+  // Filtrado reactivo por terna arbitral y búsqueda de texto en el directorio completo
+  const arbitrosFiltrados = useMemo(() => {
+    const qNorm = normalizarTexto(searchQuery);
+    const ternaNorm = normalizarTexto(filtroTerna);
+
+    return searchResults.filter((r) => {
+      // 1. Filtrado por Terna
+      if (ternaNorm) {
+        const rowTerna = normalizarTexto(r.Terna || r.Categoria);
+        if (rowTerna !== ternaNorm) return false;
+      }
+
+      // 2. Filtrado por búsqueda de texto (DNI, Apellidos, Nombres, Cargo)
+      if (qNorm) {
+        const doc = normalizarTexto(r.NumeroDocumento);
+        const ape = normalizarTexto(r.Apellidos);
+        const nom = normalizarTexto(r.Nombres);
+        const full = `${ape} ${nom}`.trim();
+        const cargo = normalizarTexto(r.ClubCargo);
+        if (
+          !doc.includes(qNorm) &&
+          !ape.includes(qNorm) &&
+          !nom.includes(qNorm) &&
+          !full.includes(qNorm) &&
+          !cargo.includes(qNorm)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [searchResults, filtroTerna, searchQuery]);
 
   return (
     <div className="space-y-4">
@@ -812,6 +867,16 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
               placeholder="Ej. 07557840 o Flores"
               className="flex-1 text-xs bg-white text-[#1a1a1a] border border-[#dcdcd8]"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-xs text-[#e11d2e] hover:underline font-bold px-2 py-1 bg-white border border-[#dcdcd8] rounded cursor-pointer"
+                title="Limpiar búsqueda"
+              >
+                ✕
+              </button>
+            )}
             <button onClick={handleBuscar} className="file-btn alt text-xs">
               <Search className="w-3.5 h-3.5" /> Buscar
             </button>
@@ -905,7 +970,7 @@ export const ScreenAdmin: React.FC<ScreenAdminProps> = ({
             </div>
           ) : (
             <div className="text-center py-6 text-xs text-[#888884] bg-white rounded-lg border border-[#dcdcd8]">
-              No se encontraron árbitros {filtroTerna ? `en la terna "${filtroTerna}"` : ''}.
+              No se encontraron árbitros {filtroTerna ? `en la terna "${filtroTerna}"` : ''} {searchQuery ? `para "${searchQuery}"` : ''}.
             </div>
           )}
         </div>
